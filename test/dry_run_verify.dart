@@ -1,9 +1,7 @@
-import 'dart:convert';
-import 'dart:io';
-import '../lib/services/moralis/moralis_config_service.dart';
-import '../lib/services/approval_scan_service.dart';
-import '../lib/services/global_approval_scanner.dart';
-import '../lib/services/portfolio_service.dart';
+import 'package:drainshield_app/services/moralis/moralis_config_service.dart';
+import 'package:drainshield_app/services/approval_scan_service.dart';
+import 'package:drainshield_app/services/global_approval_scanner.dart';
+import 'package:drainshield_app/services/portfolio_service.dart';
 
 // This script runs in pure Dart to verify Moralis connectivity and logic
 void main() async {

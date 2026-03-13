@@ -70,4 +70,3 @@ Future<void> _connectWallet() async {
 $e=New-Object System.Text.UTF8Encoding($false)
 [IO.File]::WriteAllText($fp,$c,$e)
 dart format $fp
-flutter analyze

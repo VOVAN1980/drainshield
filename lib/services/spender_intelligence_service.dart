@@ -150,10 +150,12 @@ class SpenderIntelligenceService {
       return "Revoke.cash";
     }
     if (addr == "0xdc6513d408ade4b57de6143a44576f763ec94194") return "Rabby";
-    if (addr == "0x1c0029ea974f0090886cfa733dfcc81665a587ed")
+    if (addr == "0x1c0029ea974f0090886cfa733dfcc81665a587ed") {
       return "Gnosis Safe";
-    if (addr == "0x2c00000000000000000000000000000000000000")
+    }
+    if (addr == "0x2c00000000000000000000000000000000000000") {
       return "OZ Defender";
+    }
 
     return null;
   }

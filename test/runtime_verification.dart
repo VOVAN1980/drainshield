@@ -1,13 +1,11 @@
-import 'dart:io';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/services/moralis/moralis_config_service.dart';
-import '../lib/services/approval_scan_service.dart';
-import '../lib/services/global_approval_scanner.dart';
-import '../lib/services/portfolio_service.dart';
-import '../lib/services/pro/pro_service.dart';
-import '../lib/services/security/monitoring_service.dart';
-import '../lib/services/wallet/wallet_registry_service.dart';
+import 'package:drainshield_app/services/moralis/moralis_config_service.dart';
+import 'package:drainshield_app/services/approval_scan_service.dart';
+import 'package:drainshield_app/services/global_approval_scanner.dart';
+import 'package:drainshield_app/services/portfolio_service.dart';
+import 'package:drainshield_app/services/pro/pro_service.dart';
+import 'package:drainshield_app/services/security/monitoring_service.dart';
+import 'package:drainshield_app/services/wallet/wallet_registry_service.dart';
 
 // Mocking rootBundle for the test environment
 void main() {
@@ -27,7 +25,6 @@ void main() {
       print('\n[VERIFY] Dashboard Wallet Scan');
       try {
         final approvals = await ApprovalScanService.scan(testWallet);
-        final success = approvals.isNotEmpty || MoralisConfigService.key.isEmpty;
         print(' - Starts successfully: YES');
         print(' - Returns real data: ${approvals.isNotEmpty ? "YES" : "NO (Possibly empty or fake fallback)"}');
         print(' - Count: ${approvals.length}');
@@ -63,8 +60,6 @@ void main() {
       print('\n[VERIFY] Monitoring Service');
       try {
         // Force PRO state for test
-        final pro = ProService.instance;
-        // Mocking Pro state might be hard without setter, let's see
         print(' - Checking gating (PRO status required)...');
         await MonitoringService.instance.runMonitoringNow();
         print(' - Starts successfully: YES');
