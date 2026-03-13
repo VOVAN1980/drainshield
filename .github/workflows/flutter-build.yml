@@ -32,6 +32,10 @@ jobs:
           mkdir -p secrets
           echo "{\"MORALIS_API_KEY\":\"${{ secrets.MORALIS_API_KEY }}\"}" > secrets/moralis.json
 
+      - name: Patch Reown Dashboard
+        shell: pwsh
+        run: ./patch_reown_dashboard.ps1
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -46,3 +50,4 @@ jobs:
         with:
           name: drainshield-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+
