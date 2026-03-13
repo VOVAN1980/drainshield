@@ -37,7 +37,7 @@ jobs:
       - name: Verify analysis
         run: flutter analyze
 
-      - name: Build APK (Debug)
+      - name: Build APK
         run: flutter build apk --debug
 
       - name: Upload APK artifact
