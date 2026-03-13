@@ -23,13 +23,20 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.19.0"
           channel: stable
           cache: true
 
       - name: Create Moralis secrets file
+        env:
+          MORALIS_KEY: ${{ secrets.MORALIS_API_KEY }}
         run: |
           mkdir -p secrets
-          echo "{\"MORALIS_API_KEY\":\"${{ secrets.MORALIS_API_KEY }}\"}" > secrets/moralis.json
+          printf '{"MORALIS_API_KEY":"%s"}\n' "$MORALIS_KEY" > secrets/moralis.json
+
+      - name: Patch Reown Dashboard
+        shell: pwsh
+        run: ./patch_reown_dashboard.ps1
 
       - name: Install dependencies
         run: flutter pub get
@@ -37,7 +44,7 @@ jobs:
       - name: Verify analysis
         run: flutter analyze
 
-      - name: Build APK
+      - name: Build APK (Debug)
         run: flutter build apk --debug
 
       - name: Upload APK artifact
