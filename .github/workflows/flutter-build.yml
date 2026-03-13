@@ -23,7 +23,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.22.3
+          flutter-version: "3.22.3"
           cache: true
 
       - name: Flutter version
@@ -32,7 +32,7 @@ jobs:
       - name: Create Moralis secrets file
         run: |
           mkdir -p secrets
-          cat <<EOF > secrets/moralis.json
+          cat > secrets/moralis.json <<EOF
           {
             "MORALIS_API_KEY": "${{ secrets.MORALIS_API_KEY }}"
           }
