@@ -118,3 +118,7 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
 
+
+dependency_overrides:
+  url_launcher_android: 6.3.14
+
