@@ -27,13 +27,9 @@ jobs:
           cache: true
 
       - name: Create Moralis secrets file
-  run: |
-    mkdir -p secrets
-    cat <<EOF > secrets/moralis.json
-    {
-      "MORALIS_API_KEY": "${{ secrets.MORALIS_API_KEY }}"
-    }
-    EOF
+        run: |
+          mkdir -p secrets
+          echo "{\"MORALIS_API_KEY\":\"${{ secrets.MORALIS_API_KEY }}\"}" > secrets/moralis.json
 
       - name: Install dependencies
         run: flutter pub get
