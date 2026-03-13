@@ -1,0 +1,241 @@
+import 'package:flutter/material.dart';
+import '../services/localization_service.dart';
+import '../widgets/top_nav.dart';
+import '../widgets/design/ds_background.dart';
+import '../widgets/design/ds_scanning_flow.dart';
+import 'scan_result_screen.dart';
+import '../models/approval.dart';
+import '../services/approval_scan_service.dart';
+
+/// Make Safe scan screen.
+///
+/// Performs a targeted token-approval security scan using [ApprovalScanService].
+/// Does NOT use [GlobalApprovalScanner] — that belongs exclusively to Panic Mode.
+class ScanScreen extends StatefulWidget {
+  final String address;
+  final String? targetTokenAddress;
+  final String? targetTokenName;
+  final String? targetTokenSymbol;
+  final String? highlightSpender;
+  final String? highlightToken;
+
+  const ScanScreen({
+    super.key,
+    required this.address,
+    this.targetTokenAddress,
+    this.targetTokenName,
+    this.targetTokenSymbol,
+    this.highlightSpender,
+    this.highlightToken,
+  });
+
+  @override
+  State<ScanScreen> createState() => _ScanScreenState();
+}
+
+enum _ScanState { scanning, completeSafe }
+
+class _ScanScreenState extends State<ScanScreen> {
+  int _currentStep = 0;
+  double _progress = 0.0;
+  _ScanState _state = _ScanState.scanning;
+
+  // Make Safe specific scan steps
+  List<String> _getScanSteps(LocalizationService loc) {
+    return [
+      loc.t('panicStep1'), // Reusing these for consistency as they are similar
+      loc.t('panicStep2'),
+      loc.t('panicStep3'),
+      loc.t('panicStep4'),
+      loc.t('panicStep5'),
+      loc.t('scanAnalyzing'),
+    ];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _runScan();
+  }
+
+  Future<void> _runScan() async {
+    // Fire visual animation in parallel – does not block the real fetch.
+    _simulateProgress();
+
+    List<ApprovalData> list;
+    try {
+      // MAKE SAFE uses ApprovalScanService only.
+      // RiskEngine is called internally by the service → no duplicate call here.
+      list = await ApprovalScanService.scan(
+        widget.address,
+        targetTokenAddress: widget.targetTokenAddress,
+      );
+    } catch (_) {
+      list = [];
+    }
+
+    // Wait for animation to finish before transitioning.
+    while (_progress < 1.0) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    if (!mounted) return;
+
+    if (list.isEmpty) {
+      setState(() => _state = _ScanState.completeSafe);
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ScanResultScreen(
+            address: widget.address,
+            targetTokenAddress: widget.targetTokenAddress,
+            targetTokenName: widget.targetTokenName,
+            targetTokenSymbol: widget.targetTokenSymbol,
+            highlightSpender: widget.highlightSpender,
+            highlightToken: widget.highlightToken,
+            initialApprovals: list,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _simulateProgress() async {
+    final loc = LocalizationService.instance;
+    final int total = _getScanSteps(loc).length;
+    const int delayPerStepMs = 550;
+    const int updatesPerStep = 10;
+
+    for (int i = 0; i < total; i++) {
+      if (!mounted) return;
+      setState(() => _currentStep = i);
+      for (int k = 0; k < updatesPerStep; k++) {
+        await Future.delayed(
+          const Duration(milliseconds: delayPerStepMs ~/ updatesPerStep),
+        );
+        if (!mounted) return;
+        setState(() {
+          _progress = (i + (k + 1) / updatesPerStep) / total;
+        });
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _currentStep = total;
+        _progress = 1.0;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = LocalizationProvider.of(context);
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
+      appBar: const TopNav(),
+      body: DsBackground(
+        accentColor: const Color(0xFF00FF9D),
+        child: _state == _ScanState.scanning
+            ? DsScanningFlow(
+                title: loc.t('scanAnalyzingTitle'),
+                steps: _getScanSteps(loc),
+                currentStepIndex: _currentStep,
+                progress: _progress,
+                accentColor: const Color(0xFF00FF9D),
+              )
+            : _buildSafeState(loc),
+      ),
+    );
+  }
+
+  Widget _buildSafeState(LocalizationService loc) {
+    final score = ApprovalScanService.lastRiskScore ?? 100;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00FF9D).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.verified_user_rounded,
+                size: 80,
+                color: Color(0xFF00FF9D),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              loc.t('scanCompleteTitle'),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              loc.t('scanNoRisky'),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              loc.t('scanSecurityScore', {'score': score}),
+              style: const TextStyle(
+                color: Color(0xFF00FF9D),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              loc.t('panicSafeMsg'), // Reusing "Your wallet is secure."
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 48),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: const Color(0xFF00FF9D).withOpacity(0.55),
+                    width: 2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  loc.t('scanBackToDashboard'),
+                  style: const TextStyle(
+                    color: Color(0xFF00FF9D),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,101 @@
+import 'dart:async';
+import '../security/security_event_service.dart';
+import '../settings/settings_service.dart';
+import 'notification_service.dart';
+import 'sound_service.dart';
+import '../../models/security_event.dart';
+
+class AlertService {
+  static final AlertService instance = AlertService._();
+  AlertService._();
+
+  StreamSubscription? _eventSub;
+
+  Future<void> init() async {
+    _eventSub = SecurityEventService.instance.subscribe(_onSecurityEvent);
+  }
+
+  void _onSecurityEvent(SecurityEvent event) {
+    final settings = SettingsService.instance.settings;
+    final notifications = settings.notificationSettings;
+
+    // 1. Determine if notification should be shown
+    bool shouldNotify = false;
+    bool isCritical = false;
+
+    // Severity check (Priority to severity field)
+    if (event.severity == 'critical') isCritical = true;
+
+    switch (event.type) {
+      case SecurityEventType.highRiskApproval:
+        shouldNotify = notifications.highRiskApprovalAlerts;
+        break;
+      case SecurityEventType.unlimitedApproval:
+        shouldNotify = notifications.unlimitedApprovalAlerts;
+        break;
+      case SecurityEventType.panicTriggered:
+        shouldNotify = notifications.panicAlerts;
+        isCritical = true;
+        break;
+      case SecurityEventType.revokeCompleted:
+        shouldNotify = notifications.revokeResultAlerts;
+        break;
+      case SecurityEventType.threatDbHit:
+        shouldNotify = notifications.threatDatabaseAlerts;
+        isCritical = true;
+        break;
+      case SecurityEventType.monitoringCheckFailed:
+        shouldNotify = notifications.monitoringHealthAlerts;
+        break;
+      case SecurityEventType.subscriptionExpiring:
+        shouldNotify = notifications.subscriptionReminders;
+        break;
+      default:
+        break;
+    }
+
+    if (shouldNotify) {
+      final payload = {
+        'type': _mapEventTypeToPayloadType(event.type),
+        'walletAddress': event.walletAddress,
+        'metadata': event.metadata,
+      };
+
+      if (isCritical) {
+        NotificationService.instance.showCriticalAlert(
+          event.title,
+          event.message,
+          payload: payload,
+        );
+        SoundService.instance.playCritical();
+      } else {
+        NotificationService.instance.showWarningAlert(
+          event.title,
+          event.message,
+          payload: payload,
+        );
+        SoundService.instance.playAlert();
+      }
+    }
+  }
+
+  String _mapEventTypeToPayloadType(SecurityEventType type) {
+    switch (type) {
+      case SecurityEventType.highRiskApproval:
+      case SecurityEventType.unlimitedApproval:
+      case SecurityEventType.threatDbHit:
+        return 'security_alert';
+      case SecurityEventType.panicTriggered:
+      case SecurityEventType.revokeCompleted:
+        return 'revoke_event';
+      case SecurityEventType.subscriptionExpiring:
+        return 'subscription_expiry';
+      default:
+        return 'general';
+    }
+  }
+
+  void dispose() {
+    _eventSub?.cancel();
+  }
+}
