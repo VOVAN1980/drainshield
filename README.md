@@ -203,7 +203,7 @@ AI-based approval detection
 
 ## Privacy Policy
 
-[Open Privacy Policy](https://vovan1980.github.io/drainshield/privacy.html)
+(https://vovan1980.github.io/drainshield/privacy.html)
 
 🤝 Contributing
 
