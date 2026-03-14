@@ -1,4 +1,4 @@
-package com.example.drainshield_app
+package app.drainshield.guard
 
 import io.flutter.embedding.android.FlutterActivity
 

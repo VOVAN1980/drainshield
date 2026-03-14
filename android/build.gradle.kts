@@ -1,3 +1,6 @@
+import com.android.build.gradle.BaseExtension
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+
 allprojects {
     repositories {
         google()
@@ -15,13 +18,26 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     afterEvaluate {
-        val extension = project.extensions.findByName("android") as? com.android.build.gradle.BaseExtension
-        extension?.apply {
+        val androidExt = project.extensions.findByName("android") as? BaseExtension
+        androidExt?.apply {
             compileSdkVersion(35)
+
             defaultConfig {
                 minSdk = 24
+            }
+
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_21
+                targetCompatibility = JavaVersion.VERSION_21
+            }
+        }
+
+        tasks.withType(KotlinJvmCompile::class.java).configureEach {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
             }
         }
     }
@@ -29,7 +45,7 @@ subprojects {
 
 subprojects {
     project.evaluationDependsOn(":app")
-    
+
     project.configurations.all {
         resolutionStrategy.eachDependency {
             if (requested.group == "androidx.core") {

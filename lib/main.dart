@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter/foundation.dart";
+import "package:flutter_localizations/flutter_localizations.dart";
 import "package:shared_preferences/shared_preferences.dart";
 import "services/localization_service.dart";
 import "screens/boot_screen.dart";
@@ -101,6 +102,30 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
         title: "DrainShield",
         theme: ThemeData.dark(),
         locale: _locale,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('en'),
+          Locale('ru'),
+          Locale('de'),
+          Locale('fr'),
+          Locale('es'),
+          Locale('pt'),
+          Locale('tr'),
+          Locale('ar'),
+          Locale('zh'),
+          Locale('hi'),
+          Locale('ja'),
+          Locale('ko'),
+          Locale('it'),
+          Locale('pl'),
+          Locale('uk'),
+          Locale('id'),
+          Locale('vi'),
+        ],
         home: const BootScreen(),
       ),
     );

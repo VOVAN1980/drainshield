@@ -42,5 +42,22 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Secrets and Security
 secrets/
 *.json.txt
+android/key.properties
+android/local.properties
+*.jks
+*.keystore
+KEYS.txt
+
+# Local binaries and large tools
+powershell.exe
+
+# Build artifacts and logs
+*.log
+*.txt.bak
+analyze_report.txt
+analyze_out.txt
+build_error.txt
+build_output.txt
