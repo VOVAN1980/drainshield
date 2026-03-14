@@ -7,23 +7,23 @@ DrainShield focuses on **proactive protection** rather than reacting after a wal
 
 ---
 
-# 🚀 Overview
+## 🚀 Overview
 
 Modern DeFi applications require users to grant token approvals to smart contracts.  
 These approvals often remain active indefinitely and can be exploited if the contract becomes malicious or compromised.
 
 DrainShield helps users:
 
-• Detect risky approvals  
-• Monitor wallet permissions  
-• Revoke dangerous allowances  
-• Protect assets with an emergency **Panic Mode**
+- Detect risky approvals
+- Monitor wallet permissions
+- Revoke dangerous allowances
+- Protect assets with an emergency **Panic Mode**
 
 The application does **not store private keys** and works directly with the user’s wallet via secure Web3 connections.
 
 ---
 
-# ✨ MVP v0.1 Features
+## ✨ MVP v0.1 Features
 
 ### 🔐 Wallet Security Scanner
 Scan wallets for active ERC-20 approvals and detect risky permissions.
@@ -49,32 +49,30 @@ Powered by **Moralis APIs** for fast and reliable blockchain indexing.
 
 ---
 
-# ⛓ Supported Networks
+## ⛓ Supported Networks
 
-Current:
+### Current
+- **BNB Smart Chain (BSC)**
 
-• **BNB Smart Chain (BSC)**
-
-Planned:
-
-• Ethereum  
-• Polygon  
-• Arbitrum  
-• Base
+### Planned
+- Ethereum
+- Polygon
+- Arbitrum
+- Base
 
 ---
 
-# 📸 Screenshots
+## 📸 Screenshots
 
 | Dashboard | Security Scan | Panic Mode |
-|:---:|:---:|:---:|
+| :---: | :---: | :---: |
 | ![Dashboard](https://via.placeholder.com/300x600?text=Dashboard) | ![Scan](https://via.placeholder.com/300x600?text=Security+Scan) | ![Panic](https://via.placeholder.com/300x600?text=Panic+Mode) |
 
-> Replace placeholders with real screenshots located in `assets/screenshots/`.
+> Replace placeholders with real screenshots from `assets/screenshots/`.
 
 ---
 
-# 🏗 Architecture
+## 🏗 Architecture
 
 DrainShield is built using a modular architecture designed for security and scalability.
 
@@ -104,19 +102,19 @@ DrainShield is built using a modular architecture designed for security and scal
 
 ---
 
-# 🔐 Security Model
+## 🔐 Security Model
 
 DrainShield follows several strict security principles:
 
-• The application **never stores private keys**  
-• All transactions are **signed inside the user’s wallet**  
-• No custody of user funds  
-• Local risk analysis before transaction execution  
-• Panic Mode prioritizes only **high-risk approvals**
+- The application **never stores private keys**
+- All transactions are **signed inside the user’s wallet**
+- No custody of user funds
+- Local risk analysis before transaction execution
+- Panic Mode prioritizes only **high-risk approvals**
 
 ---
 
-# 🛠 Technology Stack
+## 🛠 Technology Stack
 
 - **Flutter**
 - **Dart**
@@ -126,32 +124,24 @@ DrainShield follows several strict security principles:
 
 ---
 
-# ⚙️ Getting Started
+## ⚙️ Getting Started
 
-## Requirements
+### Requirements
 
-• Flutter SDK (3.13 or newer)  
-• Android Studio or VS Code  
-• Moralis API Key
+- Flutter SDK (3.13 or newer)
+- Android Studio or VS Code
+- Moralis API Key
 
-Install Flutter:
+Flutter installation guide:  
 https://docs.flutter.dev/get-started/install
 
----
-
-## Installation
+### Installation
 
 Clone the repository:
 
 ```bash
 git clone https://github.com/VOVAN1980/drainshield.git
-
-Enter project directory:
-
 cd drainshield
-
-Install dependencies:
-
 flutter pub get
 Moralis Configuration
 
@@ -164,7 +154,7 @@ Example:
 {
   "MORALIS_API_KEY": "YOUR_API_KEY"
 }
-Run Application
+Run the Application
 flutter run
 🗺 Roadmap
 v0.1 (Current MVP)
@@ -205,11 +195,16 @@ DeFi protocol risk intelligence
 
 AI-based approval detection
 
+🔒 Privacy Policy
+
+Privacy Policy:
+https://vovan1980.github.io/drainshield/privacy.html
+
 🤝 Contributing
 
 Contributions are welcome.
 
-If you want to improve DrainShield:
+To contribute:
 
 Fork the repository
 
@@ -222,7 +217,6 @@ Open a Pull Request
 📄 License
 
 This project is licensed under the MIT License.
-
 See the LICENSE
  file for details.
 
@@ -236,55 +230,3 @@ Users remain responsible for verifying transactions before signing them.
 DrainShield is currently in active development (MVP stage).
 
 Feedback, testing, and community contributions are highly appreciated.
-
-**DrainShield** is a proactive security tool for protecting your Web3 assets. It monitors your wallets, scans for risky approvals, and provides a "Panic Mode" for instant revocation of permissions.
-
-## 🚀 MVP v0.1 Features
-
-- **Multi-Wallet Support**: Securely manage and monitor multiple EVM-compatible wallets.
-- **Security Scans**: Identify suspicious or unlimited token approvals across various spenders.
-- **Panic Mode**: A one-tap emergency flow to revoke all high-risk approvals instantly.
-- **Portfolio Tracking**: Real-time view of your assets and their security status.
-- **Moralis Integration**: Powered by Moralis APIs for accurate and fast scanning.
-
-## 📸 Screenshots
-
-| Dashboard | Security Scan | Panic Mode |
-| :---: | :---: | :---: |
-| ![Dashboard Placeholder](https://via.placeholder.com/300x600?text=Dashboard) | ![Scan Placeholder](https://via.placeholder.com/300x600?text=Security+Scan) | ![Panic Mode Placeholder](https://via.placeholder.com/300x600?text=Panic+Mode) |
-
-> [!NOTE]
-> Replace the placeholders above with actual screenshots from the `assets/screenshots/` folder.
-
-## 🛠️ Getting Started
-
-### Prerequisites
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.13+ recommended)
-- Android Studio / VS Code
-- A Moralis API Key (configured in `secrets/moralis.json`)
-
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/VOVAN1980/drainshield.git
-   ```
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-3. Run the application:
-   ```bash
-   flutter run
-   ```
-
-## 🗺️ Roadmap
-- [x] v0.1 MVP: Basic scanning and Panic Mode.
-- [ ] v0.2: Advanced spender intelligence and transaction simulation.
-- [ ] v0.3: Push notifications for new risky approvals.
-
-## 🤝 Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-(Final sync: secrets and code fixed)
