@@ -1,6 +1,6 @@
 # Privacy Policy – DrainShield
 
-Last updated: 2026 Volodymyr Podkorytov
+Last updated: 2026
 
 DrainShield is a security utility designed to help users monitor wallet permissions and detect potential risks.
 
