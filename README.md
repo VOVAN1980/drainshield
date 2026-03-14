@@ -64,11 +64,11 @@ Powered by **Moralis APIs** for fast and reliable blockchain indexing.
 
 ## 📸 Screenshots
 
+## 📸 Screenshots
+
 | Dashboard | Security Scan | Panic Mode |
 | :---: | :---: | :---: |
-| ![Dashboard](https://via.placeholder.com/300x600?text=Dashboard) | ![Scan](https://via.placeholder.com/300x600?text=Security+Scan) | ![Panic](https://via.placeholder.com/300x600?text=Panic+Mode) |
-
-> Replace placeholders with real screenshots from `assets/screenshots/`.
+| ![Dashboard](assets/screenshots/dashboard.png) | ![Security Scan](assets/screenshots/security-scan.png) | ![Panic Mode](assets/screenshots/panic-mode.png) |
 
 ---
 
