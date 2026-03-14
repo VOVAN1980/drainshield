@@ -64,8 +64,6 @@ Powered by **Moralis APIs** for fast and reliable blockchain indexing.
 
 ## 📸 Screenshots
 
-## 📸 Screenshots
-
 | Dashboard | Security Scan | Panic Mode |
 | :---: | :---: | :---: |
 | ![Dashboard](assets/screenshots/dashboard.png) | ![Security Scan](assets/screenshots/security-scan.png) | ![Panic Mode](assets/screenshots/panic-mode.png) |
