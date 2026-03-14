@@ -1,5 +1,11 @@
 # 🛡️ DrainShield
 
+<p align="center">
+  <img src="assets/logo/lion_safe.png" alt="DrainShield Lion" width="220">
+</p>
+
+<p align="center"><b>Proactive Web3 wallet security</b></p>
+
 **DrainShield** is a Web3 wallet security tool designed to protect users from malicious token approvals and permission abuse.  
 It scans wallets for risky ERC-20 approvals, analyzes their security level, and allows users to instantly revoke dangerous permissions.
 
