@@ -9,7 +9,6 @@ class PortfolioService {
 
   PortfolioService({this.apiKey, this.chain});
 
-
   Future<List<WalletAsset>> getPortfolio(
     String address, {
     String? chainOverride,

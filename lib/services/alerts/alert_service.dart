@@ -1,4 +1,3 @@
-import 'dart:async';
 import '../security/security_event_service.dart';
 import '../settings/settings_service.dart';
 import 'notification_service.dart';
@@ -9,10 +8,18 @@ class AlertService {
   static final AlertService instance = AlertService._();
   AlertService._();
 
-  StreamSubscription? _eventSub;
+  SecurityEvent? _lastProcessedEvent;
 
   Future<void> init() async {
-    _eventSub = SecurityEventService.instance.subscribe(_onSecurityEvent);
+    SecurityEventService.instance.addListener(_onServiceUpdate);
+  }
+
+  void _onServiceUpdate() {
+    final event = SecurityEventService.instance.lastEvent;
+    if (event != null && event != _lastProcessedEvent) {
+      _lastProcessedEvent = event;
+      _onSecurityEvent(event);
+    }
   }
 
   void _onSecurityEvent(SecurityEvent event) {
@@ -96,6 +103,6 @@ class AlertService {
   }
 
   void dispose() {
-    _eventSub?.cancel();
+    SecurityEventService.instance.removeListener(_onServiceUpdate);
   }
 }

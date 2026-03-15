@@ -48,10 +48,16 @@ class RiskEngine {
       touchesValuableToken: _isValuableToken(a.chainId, a.token),
       spenderRepeatedAcrossWallet: _isSpenderRepeated(a.spenderAddress),
       // The following signals are currently defaults as the data isn't available yet
-      isProxyContract: false,
-      isUpgradeable: false,
-      hasOwnerPrivileges: false,
-      previousInteractions: 0,
+      isProxyContract: a.isProxyContract,
+      isUpgradeable: a.isUpgradeable,
+      hasOwnerPrivileges: a.hasOwnerPrivileges,
+      previousInteractions: a.previousInteractions,
+      isPopular: a.isPopular,
+      popularityScore: a.popularityScore,
+      hasDiscoveredName: a.discoveredName != null,
+      canPause: a.canPause,
+      canMint: a.canMint,
+      canBlacklist: a.canBlacklist,
       chainSupported: true,
     );
   }
@@ -143,12 +149,16 @@ class RiskEngine {
       );
     }
     if (signals.isUnknownSpender) {
-      score += 20;
+      // Penalty is reduced if we at least discovered a name or have some popularity
+      int unknownPenalty = 20;
+      if (signals.hasDiscoveredName) unknownPenalty -= 5;
+
+      score += unknownPenalty;
       reasons.add(
-        const RiskReason(
+        RiskReason(
           code: 'unknown_spender',
           messageKey: 'riskReasonUnknownSpender',
-          weight: 20,
+          weight: unknownPenalty,
         ),
       );
     }
@@ -249,6 +259,93 @@ class RiskEngine {
           weight: 6,
         ),
       );
+    }
+
+    // New: Community Trust (Popularity)
+    if (signals.isPopular) {
+      int bonus = -15;
+      if (signals.popularityScore > 50000) bonus = -25;
+
+      score += bonus;
+      reasons.add(
+        RiskReason(
+          code: 'community_trust',
+          messageKey: 'riskReasonTrust', // Reusing trust key or specific one
+          weight: bonus,
+        ),
+      );
+    }
+
+    // --- Behavioral Threat Scenarios ---
+
+    // 1. Centralized Freeze Risk
+    if (signals.hasOwnerPrivileges && signals.canPause) {
+      score += 15;
+      reasons.add(
+        const RiskReason(
+          code: 'scenario_centralized_freeze',
+          messageKey: 'riskScenarioCentralizedFreeze',
+          weight: 15,
+        ),
+      );
+    }
+
+    // 2. Blacklist Control Risk
+    if (signals.hasOwnerPrivileges && signals.canBlacklist) {
+      score += 15;
+      reasons.add(
+        const RiskReason(
+          code: 'scenario_blacklist_control',
+          messageKey: 'riskScenarioBlacklistControl',
+          weight: 15,
+        ),
+      );
+    }
+
+    // 3. Supply Manipulation Risk
+    if (signals.hasOwnerPrivileges && signals.canMint) {
+      score += 20;
+      reasons.add(
+        const RiskReason(
+          code: 'scenario_supply_manipulation',
+          messageKey: 'riskScenarioSupplyManipulation',
+          weight: 20,
+        ),
+      );
+    }
+
+    // 4. Stealth Logic Swap Risk
+    if (signals.isProxyContract &&
+        signals.isUpgradeable &&
+        signals.hasOwnerPrivileges) {
+      score += 15;
+      reasons.add(
+        const RiskReason(
+          code: 'scenario_stealth_logic_swap',
+          messageKey: 'riskScenarioStealthLogicSwap',
+          weight: 15,
+        ),
+      );
+    }
+
+    // 5. Isolated Capability (if not already covered by a scenario)
+    final hasNoScenario = score < 20; // Heuristic
+    if (hasNoScenario) {
+      if (signals.canPause) {
+        score += 5;
+        reasons.add(const RiskReason(
+            code: 'cap_pause', messageKey: 'riskCapPause', weight: 5));
+      }
+      if (signals.canMint) {
+        score += 10;
+        reasons.add(const RiskReason(
+            code: 'cap_mint', messageKey: 'riskCapMint', weight: 10));
+      }
+      if (signals.canBlacklist) {
+        score += 8;
+        reasons.add(const RiskReason(
+            code: 'cap_blacklist', messageKey: 'riskCapBlacklist', weight: 8));
+      }
     }
 
     // Negative weights (bonuses)

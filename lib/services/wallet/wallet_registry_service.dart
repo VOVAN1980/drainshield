@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/linked_wallet.dart';
+import '../../models/security_event.dart';
 import '../pro/pro_service.dart';
 import '../wc_service.dart';
+import '../security/security_event_service.dart';
 
 class WalletRegistryService extends ChangeNotifier {
   static final WalletRegistryService instance =
@@ -162,6 +164,20 @@ class WalletRegistryService extends ChangeNotifier {
     _wallets.add(walletToAdd);
     _ensureSinglePrimary(); // Ensure invariant after adding
     await save();
+
+    // Emit security event for timeline (FREE & PRO)
+    SecurityEventService.instance.emit(
+      SecurityEvent(
+        type: SecurityEventType.walletConnected,
+        severity: 'low',
+        timestamp: DateTime.now(),
+        walletAddress: walletToAdd.address,
+        title: 'Wallet Linked',
+        message:
+            'Security monitoring activated for ${walletToAdd.address.substring(0, 6)}...',
+      ),
+    );
+
     return true;
   }
 

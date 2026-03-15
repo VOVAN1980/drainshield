@@ -51,37 +51,74 @@ class WcService extends ChangeNotifier {
       metadata: const PairingMetadata(
         name: "DrainShield",
         description: "Wallet Approval Risk Scanner & Revoke Tool",
-        url: "https://drainshield.app",
+        url: "https://ibiticoin.com",
         icons: ["https://avatars.githubusercontent.com/u/37784886"],
         redirect: Redirect(
-          // Р В РІР‚в„ўР В РЎвЂ™Р В РІР‚вЂњР В РЎСљР В РЎвЂє: Р В РЎвЂќР В РЎвЂўР В Р вЂ¦Р В РЎвЂќР РЋР вЂљР В Р’ВµР РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ callback, Р В РЎвЂќР В РЎвЂўР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР РЋРІР‚в„–Р В РІвЂћвЂ“ Р В РЎвЂ”Р РЋР вЂљР В РЎвЂР В Р вЂ¦Р В РЎвЂР В РЎВР В Р’В°Р В Р’ВµР РЋРІР‚С™ AndroidManifest
           native: "drainshield://wc",
-          universal: "https://drainshield.app/wc",
-          linkMode: false,
+          universal: "https://ibiticoin.com/wc",
         ),
       ),
+      optionalNamespaces: {
+        'eip155': const RequiredNamespace(
+          chains: [
+            "eip155:1", // Ethereum
+            "eip155:56", // BSC
+            "eip155:137", // Polygon
+            "eip155:10", // Optimism
+            "eip155:100", // Gnosis
+          ],
+          methods: [
+            'personal_sign',
+            'eth_sendTransaction',
+            'eth_signTypedData',
+            'eth_signTypedData_v4',
+            'wallet_switchEthereumChain',
+            'wallet_addEthereumChain',
+          ],
+          events: [
+            'chainChanged',
+            'accountsChanged',
+          ],
+        ),
+      },
     );
-    // Р В РІР‚С”Р РЋР вЂ№Р В Р’В±Р В РЎвЂўР В Р’Вµ Р В РЎвЂР В Р’В·Р В РЎВР В Р’ВµР В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р В РЎвЂР В Р’Вµ Р РЋР С“Р В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В РЎвЂўР РЋР РЏР В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎВР В РЎвЂўР В РўвЂР В Р’В°Р В Р’В»Р В РЎвЂќР В РЎвЂ Р Р†РІР‚В РІР‚в„ў Р В РЎвЂўР В Р’В±Р В Р вЂ¦Р В РЎвЂўР В Р вЂ Р В Р’В»Р РЋР РЏР В Р’ВµР В РЎВ UI
+    // Refresh UI on modal updates
     _modal!.addListener(_onModalUpdate);
     await _modal!.init();
+    debugPrint("[WcService] Modal initialized");
     _initing = false;
     notifyListeners();
   }
 
-  void _onModalUpdate() => notifyListeners();
-  void connect() {
+  void _onModalUpdate() {
+    debugPrint("[WcService] _onModalUpdate: "
+        "isConnected=$isConnected, "
+        "address=$address, "
+        "currentChainId=$currentChainId, "
+        "hasSession=${_modal?.session != null}, "
+        "selectedChainId=${_modal?.selectedChain?.chainId}");
+    notifyListeners();
+  }
+
+  void connect(BuildContext context) {
+    debugPrint("[WcService] connect started");
     final m = _modal;
     if (m == null) throw StateError("WcService not initialized");
-    // Р В РЎвЂєР РЋРІР‚С™Р В РЎвЂќР РЋР вЂљР РЋРІР‚в„–Р В Р вЂ Р В Р’В°Р В Р’ВµР В РЎВ Р РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р вЂ¦Р В РўвЂР В Р’В°Р РЋР вЂљР РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ UI WalletConnect (Р В РЎвЂўР В Р вЂ¦ Р РЋР С“Р В Р’В°Р В РЎВ Р В РўвЂР В РЎвЂўР В Р’В¶Р В РўвЂР РЋРІР‚ВР РЋРІР‚С™Р РЋР С“Р РЋР РЏ Р В Р’В±Р В РЎвЂР В РЎвЂўР В РЎВР В Р’ВµР РЋРІР‚С™Р РЋР вЂљР В РЎвЂР В РЎвЂ/Р В РЎвЂ”Р В РЎвЂР В Р вЂ¦Р В Р’В°)
+    // Open the WalletConnect modal
+    // Revert to AllWalletsPage as SelectWalletPage was not found
     m.openModalView(const ReownAppKitModalAllWalletsPage());
   }
 
   Future<void> disconnect() async {
+    debugPrint("[WcService] disconnect called");
     final m = _modal;
     if (m == null) return;
     try {
       await m.disconnect();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("[WcService] disconnect error: $e");
+    }
+    debugPrint("[WcService] after disconnect: isConnected=$isConnected");
     notifyListeners();
   }
 

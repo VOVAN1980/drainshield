@@ -119,10 +119,19 @@ class SoundService {
   Future<void> stopAll() async {
     try {
       _stopTimer?.cancel();
+      _stopTimer = null;
       await _player.stop();
       await Vibration.cancel();
     } catch (e) {
       debugPrint('Error stopping sound/vibration: $e');
+    }
+  }
+
+  Future<void> stopVibration() async {
+    try {
+      await Vibration.cancel();
+    } catch (e) {
+      debugPrint('Error stopping vibration: $e');
     }
   }
 }

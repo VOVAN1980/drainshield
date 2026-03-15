@@ -22,9 +22,20 @@ class ApprovalData {
   BigInt allowance;
   final int decimals; // token decimals
 
+  final String? walletAddress; // owner of the approval
   final bool isKnownDex;
   final bool isVerified;
   final int contractAgeDays;
+  bool isProxyContract;
+  bool isUpgradeable;
+  bool hasOwnerPrivileges;
+  int previousInteractions;
+  int popularityScore;
+  bool isPopular;
+  String? discoveredName;
+  bool canPause;
+  bool canMint;
+  bool canBlacklist;
 
   RiskLevel riskLevel;
   SpenderReputation reputation;
@@ -46,6 +57,45 @@ class ApprovalData {
     this.contractAgeDays = 0,
     this.riskLevel = RiskLevel.safe,
     this.reputation = SpenderReputation.unknown,
+    this.walletAddress,
+    this.isProxyContract = false,
+    this.isUpgradeable = false,
+    this.hasOwnerPrivileges = false,
+    this.previousInteractions = 0,
+    this.popularityScore = 0,
+    this.isPopular = false,
+    this.discoveredName,
+    this.canPause = false,
+    this.canMint = false,
+    this.canBlacklist = false,
     ApprovalRiskAssessment? assessment,
   }) : assessment = assessment ?? ApprovalRiskAssessment.safe();
+
+  void copyWithEnrichment({
+    bool? isProxyContract,
+    bool? isUpgradeable,
+    bool? hasOwnerPrivileges,
+    int? previousInteractions,
+    int? popularityScore,
+    bool? isPopular,
+    String? discoveredName,
+    bool? canPause,
+    bool? canMint,
+    bool? canBlacklist,
+  }) {
+    if (isProxyContract != null) this.isProxyContract = isProxyContract;
+    if (isUpgradeable != null) this.isUpgradeable = isUpgradeable;
+    if (hasOwnerPrivileges != null) {
+      this.hasOwnerPrivileges = hasOwnerPrivileges;
+    }
+    if (previousInteractions != null) {
+      this.previousInteractions = previousInteractions;
+    }
+    if (popularityScore != null) this.popularityScore = popularityScore;
+    if (isPopular != null) this.isPopular = isPopular;
+    if (discoveredName != null) this.discoveredName = discoveredName;
+    if (canPause != null) this.canPause = canPause;
+    if (canMint != null) this.canMint = canMint;
+    if (canBlacklist != null) this.canBlacklist = canBlacklist;
+  }
 }

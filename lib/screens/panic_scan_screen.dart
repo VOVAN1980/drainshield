@@ -10,6 +10,8 @@ import '../widgets/design/ds_scanning_flow.dart';
 import '../widgets/top_nav.dart';
 import '../services/localization_service.dart';
 import '../widgets/design/ds_hazard_stripes.dart';
+import '../services/security/security_event_service.dart';
+import '../models/security_event.dart';
 
 class PanicScanScreen extends StatefulWidget {
   final String address;
@@ -19,10 +21,11 @@ class PanicScanScreen extends StatefulWidget {
   State<PanicScanScreen> createState() => _PanicScanScreenState();
 }
 
-enum _PanicState { scanning, noRisks, confirmRevoke, revoking, finished }
+enum _PanicState { scanning, noRisks, confirmRevoke, revoking, finished, error }
 
 class _PanicScanScreenState extends State<PanicScanScreen> {
   _PanicState _state = _PanicState.scanning;
+  String? _errorMessage;
 
   int _scanStepAction = 0;
   double _scanProgress = 0.0;
@@ -64,6 +67,7 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
     _simulateScanProgress();
 
     try {
+      _errorMessage = null;
       _allApprovals = await GlobalApprovalScanner.scanAllApprovals(
         widget.address,
       );
@@ -90,6 +94,7 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
       }
     } catch (e) {
       debugPrint("Panic scan failed: $e");
+      _errorMessage = e is String ? e : e.toString();
     }
 
     while (_scanProgress < 1.0) {
@@ -99,8 +104,11 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
     if (!mounted) return;
 
     setState(() {
-      if (_riskyApprovals.isEmpty) {
+      if (_errorMessage != null) {
+        _state = _PanicState.error;
+      } else if (_riskyApprovals.isEmpty) {
         _state = _PanicState.noRisks;
+        SecurityEventService.instance.logManualScan(widget.address, true, 0);
       } else {
         _state = _PanicState.confirmRevoke;
       }
@@ -210,7 +218,7 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
 
     try {
       queue.addJobs(_riskyApprovals);
-      await queue.run();
+      await queue.run(emitEvents: false);
     } catch (e) {
       debugPrint("Panic revoke failed: $e");
     } finally {
@@ -219,6 +227,26 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
           _state = _PanicState.finished;
           _revokeStatusText = loc.t('panicStatusComplete');
         });
+
+        // Emit security event for timeline (FREE & PRO)
+        if (_revokeSuccess > 0) {
+          SecurityEventService.instance.emit(
+            SecurityEvent(
+              type: SecurityEventType.panicTriggered,
+              severity: 'high',
+              timestamp: DateTime.now(),
+              walletAddress: widget.address,
+              title: 'Panic Mode Completed',
+              message:
+                  'Emergency revoke completed for $_revokeSuccess approvals.',
+              metadata: {
+                'successCount': _revokeSuccess,
+                'failedCount': _revokeFailed,
+                'totalProcessed': _revokeTotal,
+              },
+            ),
+          );
+        }
       }
     }
   }
@@ -233,6 +261,9 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
           progress: _scanProgress,
           accentColor: const Color(0xFFEF4444),
         );
+
+      case _PanicState.error:
+        return _buildErrorState(loc);
 
       case _PanicState.noRisks:
         return Center(
@@ -577,6 +608,88 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
           ),
         );
     }
+  }
+
+  Widget _buildErrorState(LocalizationService loc) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                size: 80,
+                color: Colors.redAccent,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              "Emergency scan failed",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? "Unable to perform emergency scan",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _errorMessage = null;
+                    _state = _PanicState.scanning;
+                    _scanProgress = 0;
+                    _scanStepAction = 0;
+                  });
+                  _startScan();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF4444),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  "Retry",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildBackButton(
+              Colors.white54,
+              loc: loc,
+              label: loc.t('panicBack'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildBackButton(

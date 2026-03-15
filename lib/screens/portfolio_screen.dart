@@ -5,6 +5,7 @@ import '../services/portfolio_service.dart';
 import '../services/wc_service.dart';
 import '../models/wallet_asset.dart';
 import '../config/chains.dart';
+import '../config/app_colors.dart';
 import '../widgets/design/ds_fade_slide.dart';
 import '../widgets/design/ds_background.dart';
 import '../widgets/mascot_image.dart';
@@ -242,7 +243,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
               label: Text(
                 _getNetworkName(network['id']!, loc),
                 style: TextStyle(
-                  color: isSelected ? Colors.black : Colors.white70,
+                  color: isSelected ? Colors.black : AppColors.secondaryText,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -296,7 +297,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: () => wc.connect(),
+              onPressed: () => wc.connect(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF00B8FF),
                 foregroundColor: Colors.black,
@@ -328,7 +329,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           const SizedBox(height: 16),
           Text(
             loc.t('portfolioSyncing'),
-            style: const TextStyle(color: Colors.white70),
+            style: const TextStyle(color: AppColors.tertiaryText),
           ),
         ],
       ),
@@ -344,7 +345,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           const SizedBox(height: 16),
           Text(
             _error ?? loc.t('unknownError'),
-            style: const TextStyle(color: Colors.white70),
+            style: const TextStyle(color: AppColors.tertiaryText),
           ),
           const SizedBox(height: 24),
           TextButton(
@@ -370,7 +371,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
             loc.t('portfolioNoAssets', {
               'network': _getNetworkName(_selectedChain, loc),
             }),
-            style: const TextStyle(color: Colors.white70),
+            style: const TextStyle(color: AppColors.tertiaryText),
           ),
           const SizedBox(height: 24),
           TextButton(
@@ -408,7 +409,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
               ),
               Text(
                 loc.t('portfolioTokensCount', {'count': _assets?.length ?? 0}),
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                style: const TextStyle(
+                    color: AppColors.tertiaryText, fontSize: 12),
               ),
             ],
           ),
@@ -446,7 +448,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                     Text(
                       loc.t('portfolioTotalValue'),
                       style: const TextStyle(
-                        color: Colors.white54,
+                        color: AppColors.secondaryText,
                         fontSize: 14,
                       ),
                     ),
@@ -490,7 +492,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                 Text(
                   _formatAddress(address),
                   style: const TextStyle(
-                    color: Colors.white38,
+                    color: AppColors.tertiaryText,
                     fontSize: 12,
                     fontFamily: 'monospace',
                   ),
@@ -546,7 +548,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                   const SizedBox(height: 4),
                   Text(
                     '${asset.balance.toStringAsFixed(asset.balance < 0.001 ? 6 : 4)} ${asset.symbol}',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    style: const TextStyle(
+                        color: AppColors.tertiaryText, fontSize: 12),
                   ),
                 ],
               ),
@@ -575,7 +578,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                 const SizedBox(height: 4),
                 Text(
                   _formatCurrency(asset.priceUsd),
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  style: const TextStyle(
+                      color: AppColors.tertiaryText, fontSize: 11),
                 ),
               ],
             ),

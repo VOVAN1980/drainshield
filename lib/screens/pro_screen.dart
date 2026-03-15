@@ -4,7 +4,9 @@ import '../services/localization_service.dart';
 import '../services/pro/pro_service.dart';
 import '../models/pro_status.dart';
 import '../widgets/design/ds_background.dart';
+import '../config/app_colors.dart';
 import '../services/pro/billing_service.dart';
+import '../widgets/mascot_image.dart';
 
 class ProScreen extends StatefulWidget {
   const ProScreen({super.key});
@@ -38,7 +40,7 @@ class _ProScreenState extends State<ProScreen> {
                 Positioned.fill(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(24, 220, 24, 40),
+                    padding: const EdgeInsets.fromLTRB(24, 270, 24, 40),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -86,15 +88,15 @@ class _ProScreenState extends State<ProScreen> {
 
   Widget _buildGoldHeader(BuildContext context, LocalizationService loc) {
     return Container(
-      height: 220,
-      padding: const EdgeInsets.fromLTRB(24, 40, 24, 0),
+      height: 270,
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
             const Color(0xFF030509),
-            const Color(0xFF030509).withOpacity(0.9),
+            const Color(0xFF030509).withOpacity(0.95),
             Colors.transparent,
           ],
         ),
@@ -106,14 +108,13 @@ class _ProScreenState extends State<ProScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.white70),
+                icon: const Icon(Icons.close, color: AppColors.tertiaryText),
                 onPressed: () => Navigator.pop(context),
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 constraints: const BoxConstraints(),
               ),
             ],
           ),
-          const SizedBox(height: 24),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -143,8 +144,8 @@ class _ProScreenState extends State<ProScreen> {
                     const SizedBox(height: 12),
                     Text(
                       loc.t('proValueProp'),
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                      style: const TextStyle(
+                        color: AppColors.tertiaryText,
                         fontSize: 14,
                         fontStyle: FontStyle.italic,
                       ),
@@ -152,11 +153,10 @@ class _ProScreenState extends State<ProScreen> {
                   ],
                 ),
               ),
-              Image.asset(
-                'assets/mascot/lion_pro.png',
-                width: 100,
-                height: 100,
-                fit: BoxFit.contain,
+              const MascotImage(
+                mascotState: MascotState.pro,
+                width: 220,
+                height: 220,
               ),
             ],
           ),
@@ -205,7 +205,7 @@ class _ProScreenState extends State<ProScreen> {
                 Text(
                   isYearly ? loc.t('proYearlyPlan') : loc.t('proMonthlyPlan'),
                   style: TextStyle(
-                    color: isSelected ? activeColor : Colors.white60,
+                    color: isSelected ? activeColor : AppColors.tertiaryText,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
@@ -242,7 +242,7 @@ class _ProScreenState extends State<ProScreen> {
               Text(
                 "SAVE 33%",
                 style: TextStyle(
-                  color: activeColor.withOpacity(0.7),
+                  color: activeColor.withOpacity(0.85),
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                 ),
@@ -278,13 +278,14 @@ class _ProScreenState extends State<ProScreen> {
                     ? Icons.history_rounded
                     : Icons.calendar_today_rounded,
                 size: 14,
-                color: Colors.white38,
+                color: AppColors.tertiaryText,
               ),
               const SizedBox(width: 8),
               Text(
                 loc.t(isExpired ? 'proStatusExpiredOn' : 'proStatusRenews',
                     {'date': dateStr}),
-                style: const TextStyle(color: Colors.white38, fontSize: 13),
+                style: const TextStyle(
+                    color: AppColors.tertiaryText, fontSize: 13),
               ),
             ],
           ),
@@ -304,7 +305,8 @@ class _ProScreenState extends State<ProScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: const TextStyle(color: Colors.white54, fontSize: 13)),
+            style:
+                const TextStyle(color: AppColors.secondaryText, fontSize: 13)),
         Text(value,
             style: const TextStyle(
                 color: Colors.white,
@@ -346,8 +348,8 @@ class _ProScreenState extends State<ProScreen> {
   Widget _buildSectionHeader(String label) {
     return Text(
       label.toUpperCase(),
-      style: TextStyle(
-        color: Colors.white.withOpacity(0.3),
+      style: const TextStyle(
+        color: AppColors.tertiaryText,
         fontSize: 11,
         fontWeight: FontWeight.w900,
         letterSpacing: 1.5,
@@ -370,7 +372,9 @@ class _ProScreenState extends State<ProScreen> {
               shape: BoxShape.circle,
             ),
             child: Icon(icon,
-                color: isComingSoon ? Colors.white24 : const Color(0xFFFFD25A),
+                color: isComingSoon
+                    ? Colors.white.withOpacity(0.42)
+                    : const Color(0xFFFFD25A),
                 size: 20),
           ),
           const SizedBox(width: 16),
@@ -381,7 +385,7 @@ class _ProScreenState extends State<ProScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    color: isComingSoon ? Colors.white38 : Colors.white,
+                    color: isComingSoon ? AppColors.tertiaryText : Colors.white,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -390,7 +394,7 @@ class _ProScreenState extends State<ProScreen> {
                 Text(
                   sub,
                   style: const TextStyle(
-                    color: Colors.white24,
+                    color: AppColors.tertiaryText,
                     fontSize: 12,
                   ),
                 ),
@@ -472,7 +476,7 @@ class _ProScreenState extends State<ProScreen> {
         Center(
           child: Text(
             loc.t('proPriceCancelHint'),
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
+            style: const TextStyle(color: AppColors.tertiaryText, fontSize: 12),
             textAlign: TextAlign.center,
           ),
         ),
@@ -482,8 +486,8 @@ class _ProScreenState extends State<ProScreen> {
             onPressed: () => billing.restorePurchases(),
             child: Text(
               loc.t('proRestoreBtn'),
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.3),
+              style: const TextStyle(
+                color: AppColors.tertiaryText,
                 fontSize: 13,
                 decoration: TextDecoration.underline,
               ),

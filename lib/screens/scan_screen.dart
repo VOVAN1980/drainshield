@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import '../services/localization_service.dart';
 import '../widgets/top_nav.dart';
 import '../widgets/design/ds_background.dart';
+import '../config/app_colors.dart';
 import '../widgets/design/ds_scanning_flow.dart';
 import 'scan_result_screen.dart';
 import '../models/approval.dart';
 import '../services/approval_scan_service.dart';
+import '../services/security/security_event_service.dart';
 
 /// Make Safe scan screen.
 ///
@@ -33,22 +35,23 @@ class ScanScreen extends StatefulWidget {
   State<ScanScreen> createState() => _ScanScreenState();
 }
 
-enum _ScanState { scanning, completeSafe }
+enum _ScanState { scanning, completeSafe, error }
 
 class _ScanScreenState extends State<ScanScreen> {
   int _currentStep = 0;
   double _progress = 0.0;
   _ScanState _state = _ScanState.scanning;
+  String? _errorMessage;
 
   // Make Safe specific scan steps
   List<String> _getScanSteps(LocalizationService loc) {
     return [
-      loc.t('panicStep1'), // Reusing these for consistency as they are similar
-      loc.t('panicStep2'),
-      loc.t('panicStep3'),
-      loc.t('panicStep4'),
-      loc.t('panicStep5'),
-      loc.t('scanAnalyzing'),
+      loc.t('panicStep1'), // Scanning Protocols
+      loc.t('panicStep2'), // Analyzing Approvals
+      loc.t('scanIntelSync'), // Syncing Threat Intel
+      loc.t('panicStep3'), // Evaluating Reputation
+      loc.t('panicStep4'), // Calculating Exposure
+      loc.t('panicStep5'), // Generating Report
     ];
   }
 
@@ -62,7 +65,7 @@ class _ScanScreenState extends State<ScanScreen> {
     // Fire visual animation in parallel – does not block the real fetch.
     _simulateProgress();
 
-    List<ApprovalData> list;
+    List<ApprovalData>? list;
     try {
       // MAKE SAFE uses ApprovalScanService only.
       // RiskEngine is called internally by the service → no duplicate call here.
@@ -70,8 +73,9 @@ class _ScanScreenState extends State<ScanScreen> {
         widget.address,
         targetTokenAddress: widget.targetTokenAddress,
       );
-    } catch (_) {
-      list = [];
+    } catch (e) {
+      _errorMessage = e is String ? e : e.toString();
+      list = null;
     }
 
     // Wait for animation to finish before transitioning.
@@ -80,8 +84,11 @@ class _ScanScreenState extends State<ScanScreen> {
     }
     if (!mounted) return;
 
-    if (list.isEmpty) {
+    if (list == null) {
+      setState(() => _state = _ScanState.error);
+    } else if (list.isEmpty) {
       setState(() => _state = _ScanState.completeSafe);
+      SecurityEventService.instance.logManualScan(widget.address, true, 0);
     } else {
       Navigator.pushReplacement(
         context,
@@ -93,7 +100,7 @@ class _ScanScreenState extends State<ScanScreen> {
             targetTokenSymbol: widget.targetTokenSymbol,
             highlightSpender: widget.highlightSpender,
             highlightToken: widget.highlightToken,
-            initialApprovals: list,
+            initialApprovals: list!,
           ),
         ),
       );
@@ -135,7 +142,9 @@ class _ScanScreenState extends State<ScanScreen> {
       extendBodyBehindAppBar: true,
       appBar: const TopNav(),
       body: DsBackground(
-        accentColor: const Color(0xFF00FF9D),
+        accentColor: _state == _ScanState.error
+            ? Colors.orange
+            : const Color(0xFF00FF9D),
         child: _state == _ScanState.scanning
             ? DsScanningFlow(
                 title: loc.t('scanAnalyzingTitle'),
@@ -144,7 +153,111 @@ class _ScanScreenState extends State<ScanScreen> {
                 progress: _progress,
                 accentColor: const Color(0xFF00FF9D),
               )
-            : _buildSafeState(loc),
+            : (_state == _ScanState.error
+                ? _buildErrorState(loc)
+                : _buildSafeState(loc)),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(LocalizationService loc) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                size: 80,
+                color: Colors.orange,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              "Scan failed",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? "Unable to load approval data",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.tertiaryText,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 48),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _errorMessage = null;
+                    _state = _ScanState.scanning;
+                    _progress = 0;
+                    _currentStep = 0;
+                  });
+                  _runScan();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  "Retry",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: Colors.white.withOpacity(0.55),
+                    width: 2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  "Back",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -183,7 +296,7 @@ class _ScanScreenState extends State<ScanScreen> {
             Text(
               loc.t('scanNoRisky'),
               style: const TextStyle(
-                color: Colors.white70,
+                color: AppColors.tertiaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -201,8 +314,8 @@ class _ScanScreenState extends State<ScanScreen> {
             Text(
               loc.t('panicSafeMsg'), // Reusing "Your wallet is secure."
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
+              style: const TextStyle(
+                color: AppColors.secondaryText,
                 fontSize: 14,
                 height: 1.5,
               ),

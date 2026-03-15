@@ -19,6 +19,7 @@ import "../services/wallet/wallet_registry_service.dart";
 import '../models/linked_wallet.dart';
 import '../services/pro/pro_service.dart';
 import '../services/security/system_health_service.dart';
+import '../config/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -169,12 +170,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         break;
       case SystemHealthState.monitoringPaused:
         labelKey = 'dashboardStatusPaused';
-        color = Colors.white38;
+        color = AppColors.tertiaryText;
         icon = Icons.pause_circle_outline_rounded;
         break;
       default:
         labelKey = 'dashboardStatusInitializing';
-        color = Colors.white24;
+        color = AppColors.tertiaryText;
         icon = Icons.hourglass_empty_rounded;
     }
 
@@ -262,8 +263,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                       if (canAdd)
                         Text(
                           _short(pendingAddr),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
+                          style: const TextStyle(
+                            color: AppColors.tertiaryText,
                             fontSize: 12,
                             fontFamily: 'monospace',
                           ),
@@ -273,9 +274,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 GestureDetector(
                   onTap: () => registry.dismissPendingLink(),
-                  child: Icon(
+                  child: const Icon(
                     Icons.close_rounded,
-                    color: Colors.white.withOpacity(0.3),
+                    color: AppColors.tertiaryText,
                     size: 20,
                   ),
                 ),
@@ -327,6 +328,18 @@ class _DashboardScreenState extends State<DashboardScreen>
   Future<void> _onPanicTap() async {
     final wc = WcService();
     if (!wc.isConnected) return;
+
+    final isPro = ProService.instance.isProActive();
+    if (!isPro) {
+      // PRO Gating for Panic Mode
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProScreen()),
+        );
+      }
+      return;
+    }
 
     // Navigate directly to the full-screen Panic Mode flow
     await Navigator.push(
@@ -403,7 +416,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           IconButton(
                             icon: const Icon(
                               Icons.settings,
-                              color: Colors.white54,
+                              color: AppColors.tertiaryText,
                             ),
                             onPressed: () => Navigator.push(
                               context,
@@ -512,7 +525,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         ? loc.t('dashboardLoadingSub')
                                         : loc.t('dashboardSystemReadySub'),
                                     style: const TextStyle(
-                                      color: Colors.white54,
+                                      color: AppColors.tertiaryText,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -567,7 +580,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     Text(
                                       loc.t('dashboardNoRiskScore'),
                                       style: const TextStyle(
-                                        color: Colors.white54,
+                                        color: AppColors.tertiaryText,
                                         fontSize: 13,
                                       ),
                                       textAlign: TextAlign.center,
@@ -581,7 +594,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         }),
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
-                                          color: Colors.white54,
+                                          color: AppColors.tertiaryText,
                                           fontSize: 13,
                                           fontFamily: 'monospace',
                                         ),
@@ -627,7 +640,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                             Text(
                                               loc.t('dashboardRiskScoreLabel'),
                                               style: const TextStyle(
-                                                color: Colors.white54,
+                                                color: AppColors.tertiaryText,
                                                 fontSize: 10,
                                                 letterSpacing: 2,
                                               ),
@@ -681,7 +694,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         }),
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
-                                          color: Colors.white54,
+                                          color: AppColors.tertiaryText,
                                           fontSize: 13,
                                           fontFamily: 'monospace',
                                         ),
@@ -723,7 +736,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 ? null
                                 : () async {
                                     if (!isConnected) {
-                                      wc.connect();
+                                      wc.connect(context);
                                       return;
                                     }
                                     await Navigator.push(
@@ -763,6 +776,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 !isConnected
                                     ? loc.t('dashboardConnectWalletBtn')
                                     : loc.t('dashboardMakeSafeBtn'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 16,
@@ -900,6 +915,8 @@ class _PressableOutlineButtonState extends State<_PressableOutlineButton>
             ),
             child: Text(
               widget.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: widget.accentColor,
                 fontWeight: FontWeight.w900,

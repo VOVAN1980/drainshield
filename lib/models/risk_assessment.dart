@@ -76,6 +76,12 @@ class ApprovalSignals {
   final bool isKnownDrainer;
   final String? threatReasonKey;
   final int threatWeight;
+  final bool isPopular;
+  final int popularityScore;
+  final bool hasDiscoveredName;
+  final bool canPause;
+  final bool canMint;
+  final bool canBlacklist;
 
   const ApprovalSignals({
     this.isUnlimited = false,
@@ -99,5 +105,11 @@ class ApprovalSignals {
     this.isKnownDrainer = false,
     this.threatReasonKey,
     this.threatWeight = 0,
+    this.isPopular = false,
+    this.popularityScore = 0,
+    this.hasDiscoveredName = false,
+    this.canPause = false,
+    this.canMint = false,
+    this.canBlacklist = false,
   });
 }

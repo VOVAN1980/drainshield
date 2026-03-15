@@ -11,14 +11,15 @@ import 'package:drainshield_app/services/wallet/wallet_registry_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const String testWallet = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045"; // vitalik.eth
+  const String testWallet =
+      "0xd8da6bf26964af9d7eed9e03e53415d37aa96045"; // vitalik.eth
 
   group('End-to-End Runtime Verification', () {
-    
     setUpAll(() async {
       print('--- INITIALIZING VERIFICATION ---');
       await MoralisConfigService.instance.init();
-      print('Moralis Key Loaded: ${MoralisConfigService.key.isNotEmpty ? "YES" : "NO"}');
+      print(
+          'Moralis Key Loaded: ${MoralisConfigService.key.isNotEmpty ? "YES" : "NO"}');
     });
 
     test('1. Dashboard Wallet Scan Flow', () async {
@@ -26,7 +27,8 @@ void main() {
       try {
         final approvals = await ApprovalScanService.scan(testWallet);
         print(' - Starts successfully: YES');
-        print(' - Returns real data: ${approvals.isNotEmpty ? "YES" : "NO (Possibly empty or fake fallback)"}');
+        print(
+            ' - Returns real data: ${approvals.isNotEmpty ? "YES" : "NO (Possibly empty or fake fallback)"}');
         print(' - Count: ${approvals.length}');
       } catch (e) {
         print(' - Error: $e');
@@ -36,7 +38,8 @@ void main() {
     test('2. Panic Mode Scan Flow', () async {
       print('\n[VERIFY] Panic Mode Scan');
       try {
-        final approvals = await GlobalApprovalScanner.scanAllApprovals(testWallet);
+        final approvals =
+            await GlobalApprovalScanner.scanAllApprovals(testWallet);
         print(' - Starts successfully: YES');
         print(' - Returns real data: ${approvals.isNotEmpty ? "YES" : "NO"}');
       } catch (e) {
@@ -69,16 +72,17 @@ void main() {
     });
 
     test('5. PRO Gating Behavior', () async {
-       print('\n[VERIFY] PRO Gating');
-       final isPro = ProService.instance.isProActive();
-       print(' - Current PRO Status: $isPro');
-       final wallets = WalletRegistryService.instance.getMonitoringEligibleWallets();
-       print(' - Monitoring Eligible Wallets: ${wallets.length}');
-       if (!isPro && wallets.isNotEmpty) {
-         print(' - [FAIL] Monitoring should not be allowed for non-PRO');
-       } else {
-         print(' - [PASS] Gating matches logic');
-       }
+      print('\n[VERIFY] PRO Gating');
+      final isPro = ProService.instance.isProActive();
+      print(' - Current PRO Status: $isPro');
+      final wallets =
+          WalletRegistryService.instance.getMonitoringEligibleWallets();
+      print(' - Monitoring Eligible Wallets: ${wallets.length}');
+      if (!isPro && wallets.isNotEmpty) {
+        print(' - [FAIL] Monitoring should not be allowed for non-PRO');
+      } else {
+        print(' - [PASS] Gating matches logic');
+      }
     });
   });
 }

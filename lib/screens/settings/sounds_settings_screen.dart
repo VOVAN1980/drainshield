@@ -54,8 +54,10 @@ class _SoundsSettingsScreenState extends State<SoundsSettingsScreen> {
                       _buildToggle(
                         loc.t('settingsVibrationEnabled'),
                         settings.vibrationEnabled,
-                        (val) =>
-                            _update(settings.copyWith(vibrationEnabled: val)),
+                        (val) {
+                          if (!val) SoundService.instance.stopVibration();
+                          _update(settings.copyWith(vibrationEnabled: val));
+                        },
                       ),
                       const SizedBox(height: 16),
 

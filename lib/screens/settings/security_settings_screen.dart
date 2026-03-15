@@ -10,7 +10,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'linked_wallets_screen.dart';
 import '../pro_screen.dart';
+import '../security_events_screen.dart';
 import '../../widgets/design/ds_background.dart';
+import '../../config/app_colors.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -59,8 +61,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                       vertical: 8,
                     ),
                     children: [
-                      _buildMonitoringHeader(loc),
-                      const SizedBox(height: 16),
                       _buildMenuTile(
                         loc.t('settingsLinkedWallets'),
                         Icons.account_balance_wallet,
@@ -72,12 +72,23 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
+                      _buildMenuTile(
+                        loc.t('settingsSecurityEvents'),
+                        Icons.security_update_warning_outlined,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SecurityEventsScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
                           loc.t('settingsSecurityEventsHelper'),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
+                          style: const TextStyle(
+                            color: AppColors.secondaryText,
                             fontSize: 13,
                           ),
                         ),
@@ -175,8 +186,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                     children: [
                       Text(
                         loc.t('settingsSecurityStatus'),
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                        style: const TextStyle(
+                          color: AppColors.tertiaryText,
                           fontSize: 12,
                         ),
                       ),
@@ -237,7 +248,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       case SystemHealthState.networkDegraded:
         return Colors.redAccent;
       default:
-        return Colors.white24;
+        return AppColors.tertiaryText;
     }
   }
 
@@ -269,7 +280,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10),
+          style: const TextStyle(color: AppColors.tertiaryText, fontSize: 10),
         ),
         const SizedBox(height: 4),
         Text(
@@ -298,7 +309,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           title,
           style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
-        trailing: const Icon(Icons.chevron_right, color: Colors.white24),
+        trailing:
+            Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.42)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
     );
@@ -318,8 +330,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         children: [
           Text(
             loc.t('settingsSecurityMonitoringStatus'),
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+            style: const TextStyle(
+              color: AppColors.secondaryText,
               fontSize: 12,
             ),
           ),
@@ -355,7 +367,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                         ? loc.t('settingsSecurityMonitoringDisabled')
                         : loc.t('proStatusExpired'),
                 style: TextStyle(
-                  color: (autoEnabled && isPro) ? Colors.white : Colors.white54,
+                  color: (autoEnabled && isPro)
+                      ? Colors.white
+                      : AppColors.tertiaryText,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -477,7 +491,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   Text(
                     title,
                     style: TextStyle(
-                      color: onChanged == null ? Colors.white54 : Colors.white,
+                      color: onChanged == null
+                          ? AppColors.tertiaryText
+                          : Colors.white,
                       fontSize: 15,
                     ),
                   ),
@@ -503,8 +519,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
               subtitle: subtitle != null
                   ? Text(
                       subtitle,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.3),
+                      style: const TextStyle(
+                        color: AppColors.tertiaryText,
                         fontSize: 12,
                       ),
                     )
@@ -559,12 +575,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
               labelText: title,
               labelStyle: TextStyle(
                   color: isEnabled
-                      ? Colors.white.withOpacity(0.5)
-                      : Colors.white24),
+                      ? AppColors.tertiaryText
+                      : AppColors.tertiaryText.withOpacity(0.5)),
               border: InputBorder.none,
             ),
             dropdownColor: const Color(0xFF030509),
-            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54),
+            icon: Icon(Icons.keyboard_arrow_down,
+                color: Colors.white.withOpacity(0.72)),
           ),
         ),
       ),
@@ -590,7 +607,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
               child: Text(
                 loc.t('settingsSecurityBackgroundStatus').toUpperCase(),
                 style: const TextStyle(
-                  color: Colors.white70,
+                  color: AppColors.tertiaryText,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
@@ -611,8 +628,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                     children: [
                       Text(
                         loc.t('settingsMonitoringHealth'),
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                        style: const TextStyle(
+                          color: AppColors.tertiaryText,
                           fontSize: 14,
                         ),
                       ),
@@ -671,12 +688,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   Widget _buildScanTimeRow(String label, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: Colors.white24),
+        Icon(icon, size: 14, color: Colors.white.withOpacity(0.42)),
         const SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.4),
+          style: const TextStyle(
+            color: AppColors.tertiaryText,
             fontSize: 13,
           ),
         ),
@@ -712,8 +729,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           const SizedBox(height: 8),
           Text(
             loc.t('settingsSecurityBatteryOptimizationGuidance'),
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
+            style: const TextStyle(
+              color: AppColors.tertiaryText,
               fontSize: 12,
             ),
           ),

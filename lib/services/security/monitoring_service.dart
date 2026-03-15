@@ -7,6 +7,7 @@ import '../wallet/wallet_registry_service.dart';
 import '../approval_scan_service.dart';
 import 'security_event_service.dart';
 import 'monitoring_state_service.dart';
+import '../alerts/notification_service.dart';
 
 import 'package:workmanager/workmanager.dart';
 
@@ -140,15 +141,18 @@ class MonitoringService {
       if (newRisks.isNotEmpty) {
         // Emit events for new risks
         for (final risk in newRisks) {
+          const title = 'High Risk Approval Detected';
+          final message =
+              'Suspicious approval for ${risk.tokenSymbol} found in your wallet.';
+
           SecurityEventService.instance.emit(
             SecurityEvent(
               type: SecurityEventType.highRiskApproval,
               severity: risk.assessment.score >= 90 ? 'critical' : 'high',
               timestamp: DateTime.now(),
               walletAddress: address,
-              title: 'High Risk Approval Detected',
-              message:
-                  'Suspicious approval for ${risk.tokenSymbol} found in your wallet.',
+              title: title,
+              message: message,
               metadata: {
                 'spender': risk.spenderAddress,
                 'token': risk.token,
@@ -158,6 +162,35 @@ class MonitoringService {
               },
             ),
           );
+
+          // Trigger OS notification
+          if (risk.assessment.score >= 90) {
+            NotificationService.instance.showCriticalAlert(
+              title,
+              message,
+              payload: {
+                'type': 'security_alert',
+                'walletAddress': address,
+                'metadata': {
+                  'spender': risk.spenderAddress,
+                  'token': risk.token,
+                },
+              },
+            );
+          } else {
+            NotificationService.instance.showWarningAlert(
+              title,
+              message,
+              payload: {
+                'type': 'security_alert',
+                'walletAddress': address,
+                'metadata': {
+                  'spender': risk.spenderAddress,
+                  'token': risk.token,
+                },
+              },
+            );
+          }
         }
       }
 

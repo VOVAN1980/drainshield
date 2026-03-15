@@ -14,20 +14,23 @@ class RiskExplanationService {
       reasons.add(
         'Verified Protocol: This spender is recognized as a trusted community protocol (e.g., Uniswap or PancakeSwap).',
       );
-    } else if (approval.reputation == SpenderReputation.suspicious) {
-      reasons.add(
-        'Warning: This address has been identified as suspicious or high-risk.',
-      );
     } else {
-      // Unknown / unrecognized spender (no human-readable label available)
-      final spenderLabel = approval.spender.trim();
-      final hasNoLabel = spenderLabel.isEmpty ||
-          spenderLabel.toLowerCase() == 'unknown' ||
-          spenderLabel == approval.spenderAddress;
-      if (hasNoLabel) {
+      // Unknown / unrecognized spender
+      final discovered = approval.discoveredName;
+      if (discovered != null && discovered.isNotEmpty) {
         reasons.add(
-          'Anonymous Spender: This contract has no known identity or public reputation.',
+          'Identified Contract: This spender is recognized as "$discovered".',
         );
+      } else {
+        final spenderLabel = approval.spender.trim();
+        final hasNoLabel = spenderLabel.isEmpty ||
+            spenderLabel.toLowerCase() == 'unknown' ||
+            spenderLabel == approval.spenderAddress;
+        if (hasNoLabel) {
+          reasons.add(
+            'Anonymous Spender: This contract has no known identity or public reputation.',
+          );
+        }
       }
     }
 
@@ -52,6 +55,76 @@ class RiskExplanationService {
       reasons.add(
         'Contract was deployed less than 30 days ago — newly created contracts present higher uncertainty.',
       );
+    }
+
+    // 5. Behavioral Simulation & Scenarios
+
+    // Centralized Freeze Scenario
+    if (approval.hasOwnerPrivileges && approval.canPause) {
+      reasons.add(
+        'Centralized Freeze Risk: An "owner" or "admin" account has the capability to pause all transfers for this token at any time.',
+      );
+    } else if (approval.canPause) {
+      reasons.add(
+          'Automated Freeze: This contract has pause functionality which could be triggered to stop token movement.');
+    }
+
+    // Targeted Blacklist Scenario
+    if (approval.hasOwnerPrivileges && approval.canBlacklist) {
+      reasons.add(
+        'Blacklist Control Risk: This contract allows administrators to manually block specific wallets from moving their tokens.',
+      );
+    } else if (approval.canBlacklist) {
+      reasons.add(
+          'Blacklist Capability: This contract has logic to restrict specific addresses from transacting.');
+    }
+
+    // Supply Manipulation Scenario
+    if (approval.hasOwnerPrivileges && approval.canMint) {
+      reasons.add(
+        'Supply Manipulation Risk: Centralized "minting" power detected. The owner can create new tokens, potentially diluting value or draining liquidity.',
+      );
+    } else if (approval.canMint) {
+      reasons.add(
+          'Minting Capability: This contract can create new supply, which is a risk factor for inflation or "rug-pull" scenarios.');
+    }
+
+    // Logic Swap / Upgrade Scenario
+    if (approval.isProxyContract && approval.hasOwnerPrivileges) {
+      reasons.add(
+        'Stealth Logic Swap: This is an upgradeable proxy contract controlled by an admin. The underlying logic could be swapped to a malicious version without notice.',
+      );
+    } else if (approval.isProxyContract) {
+      reasons.add(
+        'Upgradeable Proxy: This contract uses a proxy pattern. While standard for many dApps, it means the logic can be changed by its maintainers.',
+      );
+    }
+
+    // Generic Owner Privilege (if not already covered by specific scenarios)
+    final hasComplexScenario = (approval.canPause ||
+        approval.canMint ||
+        approval.canBlacklist ||
+        approval.isProxyContract);
+    if (approval.hasOwnerPrivileges && !hasComplexScenario) {
+      reasons.add(
+        'Centralized Control: This contract has an "owner" or "admin" account with elevated privileges over the logic.',
+      );
+    }
+
+    // 7. Community Trust (Mitigation)
+    if (approval.isPopular) {
+      final level = approval.popularityScore > 50000 ? 'Very High' : 'High';
+      reasons.add(
+        'Community Trust: $level on-chain activity detected (${approval.popularityScore}+ transactions). This reduces the risk of an ephemeral scam.',
+      );
+    }
+
+    // 8. Interaction Trust (Mitigation)
+    if (approval.previousInteractions > 0) {
+      final text = approval.previousInteractions == 1
+          ? 'Established Trust: You have successfully interacted with this contract before.'
+          : 'Established Trust: You have successfully interacted with this contract ${approval.previousInteractions} times before.';
+      reasons.add(text);
     }
 
     // If no specific reasons were found but risk level is warning, add generic

@@ -7,8 +7,9 @@ class MoralisParser {
   /// Maps a Moralis API result JSON item into an [ApprovalData] object.
   static ApprovalData parseApprovalItem(
     Map<String, dynamic> item,
-    String currentChain,
-  ) {
+    String currentChain, {
+    String? ownerAddress,
+  }) {
     final token = (item["token"] as Map?) ?? const {};
     final spender = (item["spender"] as Map?) ?? const {};
 
@@ -64,11 +65,11 @@ class MoralisParser {
     }
 
     final chainId = ChainConfig.getChainId(currentChain);
-    final reputation = SpenderIntelligenceService.getReputation(
+    final reputation = SpenderIntelligenceService.instance.getReputation(
       chainId,
       spenderAddr,
     );
-    final trustedLabel = SpenderIntelligenceService.getTrustedLabel(
+    final trustedLabel = SpenderIntelligenceService.instance.getTrustedLabel(
       chainId,
       spenderAddr,
     );
@@ -109,6 +110,7 @@ class MoralisParser {
       isVerified: verified,
       contractAgeDays: ageDays,
       reputation: reputation,
+      walletAddress: ownerAddress,
     );
   }
 }

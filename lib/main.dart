@@ -2,7 +2,9 @@ import "package:flutter/material.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_localizations/flutter_localizations.dart";
 import "package:shared_preferences/shared_preferences.dart";
+import "package:reown_appkit/reown_appkit.dart";
 import "services/localization_service.dart";
+import "services/spender_intelligence_service.dart";
 import "screens/boot_screen.dart";
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -23,6 +25,7 @@ void main() async {
 
   // Basic infrastructure needed for the App widget itself
   await LocalizationService.instance.load(const Locale('en'));
+  await SpenderIntelligenceService.instance.init();
 
   runApp(const DrainShieldApp());
 }
@@ -100,7 +103,13 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         title: "DrainShield",
-        theme: ThemeData.dark(),
+        theme: ThemeData.dark().copyWith(
+          bottomSheetTheme: const BottomSheetThemeData(
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            clipBehavior: Clip.none,
+          ),
+        ),
         locale: _locale,
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
@@ -126,6 +135,22 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
           Locale('id'),
           Locale('vi'),
         ],
+        builder: (context, child) {
+          return Material(
+            child: ReownAppKitModalTheme(
+              isDarkMode: true,
+              themeData: const ReownAppKitModalThemeData(
+                radiuses: ReownAppKitModalRadiuses.square,
+              ),
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: const TextScaler.linear(0.85),
+                ),
+                child: child!,
+              ),
+            ),
+          );
+        },
         home: const BootScreen(),
       ),
     );

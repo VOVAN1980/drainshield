@@ -11,6 +11,8 @@ import '../services/risk_explanation_service.dart';
 import '../services/revoke_service.dart';
 import '../widgets/design/ds_background.dart';
 import '../widgets/top_nav.dart';
+import '../services/security/security_event_service.dart';
+import '../models/security_event.dart';
 
 /// Full-screen risk inspection card for a single [ApprovalData].
 ///
@@ -88,8 +90,27 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
     setState(() => _revoking = true);
     final loc = LocalizationProvider.of(context);
     try {
-      await RevokeService.revokeApproval(a: widget.approval);
+      final txHash = await RevokeService.revokeApproval(a: widget.approval);
       widget.approval.allowance = BigInt.zero;
+
+      // Emit security event for timeline (FREE & PRO)
+      SecurityEventService.instance.emit(
+        SecurityEvent(
+          type: SecurityEventType.revokeCompleted,
+          severity: 'low',
+          timestamp: DateTime.now(),
+          walletAddress: widget.walletAddress,
+          title: 'Revoke Successful',
+          message:
+              'Permission revoked for ${widget.approval.tokenSymbol} on ${widget.approval.spender}',
+          metadata: {
+            'token': widget.approval.token,
+            'spender': widget.approval.spenderAddress,
+            'chainId': widget.approval.chainId,
+            'txHash': txHash,
+          },
+        ),
+      );
       if (mounted) {
         setState(() {
           _revoking = false;
@@ -224,6 +245,15 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                                 ? Colors.redAccent
                                 : Colors.white38,
                       ),
+                      if (a.isPopular) ...[
+                        const SizedBox(height: 4),
+                        _InfoRow(
+                          label: 'COMMUNITY TRUST',
+                          value:
+                              a.popularityScore > 50000 ? 'Very High' : 'High',
+                          valueColor: const Color(0xFF10B981),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -252,9 +282,11 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                       const SizedBox(height: 8),
                       _InfoRow(
                         label: loc.t('approvalSpender'),
-                        value: a.spender != a.spenderAddress
+                        value: (a.spender != a.spenderAddress &&
+                                a.spender.toLowerCase() != 'unknown')
                             ? a.spender
-                            : loc.t('approvalUnknownSpender'),
+                            : (a.discoveredName ??
+                                loc.t('approvalUnknownSpender')),
                         valueColor: Colors.white70,
                       ),
                       const SizedBox(height: 4),
@@ -400,6 +432,49 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
+
+                // ── BEHAVIORAL ANALYSIS ──────────────────────────────────────
+                if (a.canPause ||
+                    a.canMint ||
+                    a.canBlacklist ||
+                    a.isProxyContract ||
+                    a.hasOwnerPrivileges)
+                  _SectionCard(
+                    title: 'BEHAVIORAL ANALYSIS & SCENARIOS',
+                    titleColor: const Color(0xFF60A5FA),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (a.canPause)
+                          const _BehaviorBadge(
+                            label: 'CAN PAUSE',
+                            icon: Icons.pause_circle_filled_rounded,
+                          ),
+                        if (a.canBlacklist)
+                          const _BehaviorBadge(
+                            label: 'CAN BLACKLIST',
+                            icon: Icons.block_flipped,
+                          ),
+                        if (a.canMint)
+                          const _BehaviorBadge(
+                            label: 'CAN MINT',
+                            icon: Icons.add_circle_rounded,
+                          ),
+                        if (a.isProxyContract)
+                          const _BehaviorBadge(
+                            label: 'UPGRADEABLE',
+                            icon: Icons.auto_awesome_motion_rounded,
+                          ),
+                        if (a.hasOwnerPrivileges)
+                          const _BehaviorBadge(
+                            label: 'ADMIN CONTROL',
+                            icon: Icons.admin_panel_settings_rounded,
+                          ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 12),
 
                 // ── WHY THIS IS RISKY ─────────────────────────────────────────
@@ -670,6 +745,43 @@ class _InfoRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _BehaviorBadge extends StatelessWidget {
+  final String label;
+  final IconData icon;
+
+  const _BehaviorBadge({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF60A5FA).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFF60A5FA).withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF60A5FA)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF60A5FA),
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

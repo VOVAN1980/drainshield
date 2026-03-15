@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/localization_service.dart';
 import '../widgets/design/ds_background.dart';
+import '../config/app_colors.dart';
 import '../widgets/mascot_image.dart';
 import 'settings/notifications_settings_screen.dart';
 import 'settings/sounds_settings_screen.dart';
@@ -93,9 +94,9 @@ class SettingsScreen extends StatelessWidget {
                     child: Opacity(
                       opacity: 0.5,
                       child: Text(
-                        "DrainShield v1.0.0+1",
+                        "DrainShield v0.1.0 – MVP Public Release",
                         style: TextStyle(
-                          color: Colors.white54,
+                          color: AppColors.tertiaryText,
                           fontSize: 10,
                         ),
                       ),
@@ -116,8 +117,8 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, bottom: 8, top: 16),
       child: Text(
         title.toUpperCase(),
-        style: TextStyle(
-          color: Colors.white.withOpacity(0.3),
+        style: const TextStyle(
+          color: AppColors.tertiaryText,
           fontSize: 11,
           fontWeight: FontWeight.w900,
           letterSpacing: 1.5,
@@ -216,8 +217,8 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   child: Text(
                     content,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                    style: const TextStyle(
+                      color: AppColors.secondaryText,
                       fontSize: 14,
                       height: 1.6,
                       letterSpacing: 0.2,
@@ -294,8 +295,8 @@ class SettingsScreen extends StatelessWidget {
                     Text(
                       loc.t('settingsSupportSub'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                      style: const TextStyle(
+                        color: AppColors.tertiaryText,
                         fontSize: 14,
                         height: 1.5,
                       ),
@@ -340,8 +341,8 @@ class SettingsScreen extends StatelessWidget {
                           const SizedBox(width: 12),
                           Text(
                             loc.t('settingsSupportResponseTime'),
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
+                            style: const TextStyle(
+                              color: AppColors.tertiaryText,
                               fontSize: 12,
                             ),
                           ),
@@ -403,8 +404,8 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
+                    style: const TextStyle(
+                      color: AppColors.tertiaryText,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -423,7 +424,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             const Icon(
               Icons.chevron_right,
-              color: Colors.white24,
+              color: AppColors.tertiaryText,
             ),
           ],
         ),
@@ -473,7 +474,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             child: Icon(
               icon,
-              color: isPremium ? Colors.orange : Colors.white70,
+              color: AppColors.tertiaryText,
               size: 18,
             ),
           ),
@@ -489,7 +490,9 @@ class SettingsScreen extends StatelessWidget {
           ),
           trailing: Icon(
             Icons.arrow_forward_ios,
-            color: isPremium ? Colors.orange.withOpacity(0.3) : Colors.white24,
+            color: isPremium
+                ? Colors.orange.withOpacity(0.3)
+                : AppColors.tertiaryText,
             size: 14,
           ),
           dense: isCompact,

@@ -6,7 +6,10 @@ enum SecurityEventType {
   panicTriggered,
   revokeCompleted,
   subscriptionExpiring,
-  monitoringCheckFailed;
+  monitoringCheckFailed,
+  walletConnected,
+  manualScanCompleted,
+  systemInitialized;
 
   String toJson() => name;
 

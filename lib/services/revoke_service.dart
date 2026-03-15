@@ -18,6 +18,9 @@ class RevokeService {
       throw "Cannot revoke: Unsupported or unapproved network. Revocation cancelled to protect wallet.";
     }
     final wc = WcService();
+    if (wc.currentChainId != a.chainId) {
+      throw "Wrong network selected in wallet. Please switch to the correct network before revoking.";
+    }
     if (!wc.isConnected) {
       throw StateError("Wallet not connected");
     }
@@ -75,6 +78,9 @@ class RevokeService {
       throw "Cannot estimate gas: Unsupported network.";
     }
     final wc = WcService();
+    if (wc.currentChainId != a.chainId) {
+      throw "Wrong network selected in wallet. Please switch to the correct network before revoking.";
+    }
     if (!wc.isConnected) {
       throw StateError("Wallet not connected");
     }

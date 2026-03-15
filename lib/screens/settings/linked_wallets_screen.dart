@@ -6,6 +6,7 @@ import '../../services/localization_service.dart';
 import '../../services/pro/pro_service.dart';
 import '../../widgets/design/ds_background.dart';
 import '../pro_screen.dart';
+import '../../config/app_colors.dart';
 
 class LinkedWalletsScreen extends StatefulWidget {
   const LinkedWalletsScreen({super.key});
@@ -61,7 +62,8 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                 child: Text(loc.t('linkedWalletsAddCurrent')),
               ),
               const SizedBox(height: 16),
-              const Text("--- OR ---", style: TextStyle(color: Colors.white24)),
+              const Text("--- OR ---",
+                  style: TextStyle(color: AppColors.tertiaryText)),
               const SizedBox(height: 16),
             ],
             TextField(
@@ -70,7 +72,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: loc.t('linkedWalletsAddressHint'),
-                hintStyle: const TextStyle(color: Colors.white24),
+                hintStyle: const TextStyle(color: AppColors.tertiaryText),
               ),
             ),
             const SizedBox(height: 8),
@@ -79,7 +81,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: loc.t('linkedWalletsLabelHint'),
-                hintStyle: const TextStyle(color: Colors.white24),
+                hintStyle: const TextStyle(color: AppColors.tertiaryText),
               ),
             ),
           ],
@@ -161,8 +163,8 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                             horizontal: 24, vertical: 8),
                         child: Text(
                           loc.t('linkedWalletsEmptyGuidance'),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
+                          style: const TextStyle(
+                            color: AppColors.tertiaryText,
                             fontSize: 13,
                           ),
                         ),
@@ -178,8 +180,8 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                             Expanded(
                               child: Text(
                                 "${wallets.length} / $limit ${loc.t('settingsSubscriptionWalletLimit')}",
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
+                                style: const TextStyle(
+                                  color: AppColors.tertiaryText,
                                   fontSize: 13,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -220,7 +222,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                                     Text(
                                       loc.t('linkedWalletsEmpty'),
                                       style: const TextStyle(
-                                        color: Colors.white24,
+                                        color: AppColors.tertiaryText,
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -233,8 +235,8 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                                       child: Text(
                                         loc.t('linkedWalletsEmptyGuidance'),
                                         textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.2),
+                                        style: const TextStyle(
+                                          color: AppColors.tertiaryText,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -310,7 +312,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                             : Icons.lock,
                         color: wallet.isPrimary && isWalletActive
                             ? const Color(0xFF00FF9D)
-                            : Colors.white54,
+                            : AppColors.tertiaryText,
                       ),
                     ),
                     Positioned(
@@ -350,8 +352,8 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                       const SizedBox(height: 2),
                       Text(
                         "${wallet.address.substring(0, 8)}...${wallet.address.substring(wallet.address.length - 6)}",
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
+                        style: const TextStyle(
+                          color: AppColors.tertiaryText,
                           fontSize: 11,
                           fontFamily: 'monospace',
                         ),
@@ -384,7 +386,8 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                     ),
                   ),
                 PopupMenuButton(
-                  icon: const Icon(Icons.more_vert, color: Colors.white38),
+                  icon: const Icon(Icons.more_vert,
+                      color: AppColors.tertiaryText),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 160),
                   color: const Color(0xFF161B22),
@@ -482,11 +485,11 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             "Your wallets are currently not being monitored because your PRO subscription is inactive. Renew now to reactivate 24/7 protection.",
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
+              color: AppColors.tertiaryText,
               fontSize: 13,
             ),
           ),

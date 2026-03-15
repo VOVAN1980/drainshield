@@ -46,13 +46,19 @@ class _DsSlideActionState extends State<DsSlideAction> {
               Center(
                 child: Opacity(
                   opacity: _dragValue > 20 ? 0.2 : 1.0,
-                  child: Text(
-                    widget.label.toUpperCase(),
-                    style: TextStyle(
-                      color: isEnabled ? Colors.white70 : Colors.white24,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                      letterSpacing: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 65),
+                    child: Text(
+                      widget.label.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isEnabled ? Colors.white70 : Colors.white24,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14,
+                        letterSpacing: 2,
+                      ),
                     ),
                   ),
                 ),

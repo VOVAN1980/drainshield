@@ -17,7 +17,8 @@ void main() async {
   print(' - Default Chain: ${config.defaultChain}');
 
   if (config.apiKey.isEmpty) {
-    print(' ! WARNING: Moralis API Key is missing. Scanning will use FAKE mode.');
+    print(
+        ' ! WARNING: Moralis API Key is missing. Scanning will use FAKE mode.');
   }
 
   const String testWallet = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045";
@@ -29,8 +30,10 @@ void main() async {
     print(' - Success: YES');
     print(' - Count: ${approvals.length}');
     if (approvals.isNotEmpty) {
-      print(' - First Approval: ${approvals[0].token} (Spender: ${approvals[0].spender})');
-      print(' - Risk Assessment: ${approvals[0].assessment.label.name} (${approvals[0].assessment.score})');
+      print(
+          ' - First Approval: ${approvals[0].token} (Spender: ${approvals[0].spender})');
+      print(
+          ' - Risk Assessment: ${approvals[0].assessment.label.name} (${approvals[0].assessment.score})');
     }
   } catch (e) {
     print(' - Error: $e');
@@ -39,7 +42,8 @@ void main() async {
   // 3. Test GlobalApprovalScanner
   print('\n[3/5] Testing GlobalApprovalScanner.scanAllApprovals()...');
   try {
-    final globalResults = await GlobalApprovalScanner.scanAllApprovals(testWallet);
+    final globalResults =
+        await GlobalApprovalScanner.scanAllApprovals(testWallet);
     print(' - Success: YES');
     print(' - Count: ${globalResults.length}');
   } catch (e) {
@@ -53,8 +57,9 @@ void main() async {
     print(' - Success: YES');
     print(' - Count: ${assets.length}');
     if (assets.isNotEmpty) {
-       print(' - Top Asset: ${assets[0].name} (${assets[0].balance} ${assets[0].symbol})');
-       print(' - Value USD: \$${assets[0].valueUsd.toStringAsFixed(2)}');
+      print(
+          ' - Top Asset: ${assets[0].name} (${assets[0].balance} ${assets[0].symbol})');
+      print(' - Value USD: \$${assets[0].valueUsd.toStringAsFixed(2)}');
     }
   } catch (e) {
     print(' - Error: $e');

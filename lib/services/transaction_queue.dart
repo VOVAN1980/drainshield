@@ -2,6 +2,8 @@ import 'dart:async';
 import '../models/approval.dart';
 import '../models/gas_estimation_result.dart';
 import 'revoke_service.dart';
+import 'security/security_event_service.dart';
+import '../models/security_event.dart';
 
 enum RevokeJobStatus { pending, waitingWallet, submitted, confirmed, failed }
 
@@ -64,7 +66,7 @@ class TransactionQueue {
     _notify();
   }
 
-  Future<void> run() async {
+  Future<void> run({bool emitEvents = true}) async {
     if (_isRunning || _jobs.isEmpty) return;
     _isRunning = true;
 
@@ -89,6 +91,27 @@ class TransactionQueue {
         job.txHash = txHash;
         job.status = RevokeJobStatus.submitted;
         successCount++;
+
+        // Emit security event for timeline (FREE & PRO)
+        if (emitEvents) {
+          SecurityEventService.instance.emit(
+            SecurityEvent(
+              type: SecurityEventType.revokeCompleted,
+              severity: 'low',
+              timestamp: DateTime.now(),
+              walletAddress: job.approval.walletAddress,
+              title: 'Revoke Successful',
+              message:
+                  'Permission revoked for ${job.approval.tokenSymbol} on ${job.approval.spender}',
+              metadata: {
+                'token': job.approval.token,
+                'spender': job.approval.spenderAddress,
+                'chainId': job.approval.chainId,
+                'txHash': txHash,
+              },
+            ),
+          );
+        }
       } catch (e) {
         job.error = e.toString();
         job.status = RevokeJobStatus.failed;

@@ -1,7 +1,21 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/approval.dart';
 
 class SpenderIntelligenceService {
-  /// Local reputation map categories
+  static final SpenderIntelligenceService instance =
+      SpenderIntelligenceService._internal();
+  SpenderIntelligenceService._internal();
+
+  static const String _manifestUrl =
+      "https://raw.githubusercontent.com/VOVAN1980/drainshield-intel/main/spenders.json";
+  static const String _cacheKey = "spender_manifest_cache";
+
+  final Map<int, Map<String, SpenderReputation>> _remoteMap = {};
+  final Map<String, String> _remoteLabels = {};
+
+  /// Local reputation map categories (Hardcoded Fallbacks)
   static final Map<int, Map<String, SpenderReputation>> _reputationMap = {
     // BNB Smart Chain (56)
     56: {
@@ -102,11 +116,88 @@ class SpenderIntelligenceService {
     },
   };
 
+  Future<void> init() async {
+    await _loadFromCache();
+    // Non-blocking sync
+    syncRemoteData().catchError((_) {});
+  }
+
+  Future<void> _loadFromCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_cacheKey);
+      if (cached != null) {
+        _parseManifest(cached);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> syncRemoteData() async {
+    try {
+      final res = await http.get(Uri.parse(_manifestUrl)).timeout(
+            const Duration(seconds: 5),
+          );
+      if (res.statusCode == 200) {
+        final body = res.body;
+        _parseManifest(body);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_cacheKey, body);
+      }
+    } catch (_) {
+      // Handle error silently as per requirements (graceful degradation)
+    }
+  }
+
+  void _parseManifest(String jsonStr) {
+    try {
+      final data = jsonDecode(jsonStr);
+      if (data["spenders"] is List) {
+        for (final item in data["spenders"]) {
+          final chainId = item["chainId"] as int?;
+          final address = (item["address"] as String?)?.toLowerCase();
+          final repStr = item["reputation"] as String?;
+          final label = item["label"] as String?;
+
+          if (chainId != null && address != null && repStr != null) {
+            final rep = _parseReputation(repStr);
+            _remoteMap.putIfAbsent(chainId, () => {})[address] = rep;
+            if (label != null) _remoteLabels[address] = label;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  SpenderReputation _parseReputation(String rep) {
+    switch (rep.toLowerCase()) {
+      case 'trusted':
+        return SpenderReputation.trusted;
+      case 'dex':
+        return SpenderReputation.dex;
+      case 'bridge':
+        return SpenderReputation.bridge;
+      case 'safety':
+        return SpenderReputation.safety;
+      case 'suspicious':
+        return SpenderReputation.suspicious;
+      case 'flagged':
+        return SpenderReputation.flagged;
+      default:
+        return SpenderReputation.unknown;
+    }
+  }
+
   /// Returns the reputation of a spender for a specific chain.
-  static SpenderReputation getReputation(int chainId, String address) {
+  SpenderReputation getReputation(int chainId, String address) {
     final addr = address.toLowerCase();
 
-    // 1. Check flagged/suspicious first
+    // 1. Check Remote/Dynamic Data first
+    final remoteChainMap = _remoteMap[chainId];
+    if (remoteChainMap != null && remoteChainMap.containsKey(addr)) {
+      return remoteChainMap[addr]!;
+    }
+
+    // 2. Check flagged/suspicious first
     for (final entry in _flaggedSpenders.entries) {
       if (entry.key.toLowerCase() == addr) return entry.value;
     }
@@ -136,10 +227,13 @@ class SpenderIntelligenceService {
   }
 
   /// Returns a clean label for a known spender, or null if unknown.
-  static String? getTrustedLabel(int chainId, String address) {
+  String? getTrustedLabel(int chainId, String address) {
     final addr = address.toLowerCase();
 
-    // Check fixed labels
+    // 1. Check Remote Labels
+    if (_remoteLabels.containsKey(addr)) return _remoteLabels[addr];
+
+    // 2. Check fixed labels
     for (final entry in _knownLabels.entries) {
       if (entry.key.toLowerCase() == addr) return entry.value;
     }

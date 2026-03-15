@@ -3,13 +3,11 @@ import "package:http/http.dart" as http;
 import "../models/approval.dart";
 import "../config/chains.dart";
 import "risk_engine.dart";
-import "wallet_service.dart";
 import "wc_service.dart";
 import "moralis_parser.dart";
 import "moralis/moralis_config_service.dart";
 
 class GlobalApprovalScanner {
-
   static Future<List<ApprovalData>> scanAllApprovals(String wallet) async {
     final apiKey = MoralisConfigService.key;
 
@@ -21,17 +19,14 @@ class GlobalApprovalScanner {
     }
 
     if (apiKey.isEmpty) {
-      // In demo mode, load all fake approvals to simulate a global scan
-      final fake = WalletService.loadFakeApprovals();
-      RiskEngine.evaluateApprovals(fake);
-      return fake;
+      throw "Moralis API key is missing";
     }
 
     final out = <ApprovalData>[];
     try {
       // Moralis v2.2 ERC20 Approval Endpoint
       final uri = Uri.parse(
-        "https://deep-index.moralis.io/api/v2.2/wallets/$wallet/erc20/approvals?chain=$currentChain&limit=100",
+        "https://deep-index.moralis.io/api/v2.2/wallets/$wallet/approvals?chain=$currentChain&limit=100",
       );
 
       final res = await http.get(uri, headers: {"X-API-Key": apiKey});
@@ -41,15 +36,19 @@ class GlobalApprovalScanner {
         final result = (json["result"] as List?) ?? const [];
         for (final it in result) {
           final m = it as Map<String, dynamic>;
-          final parsed = MoralisParser.parseApprovalItem(m, currentChain);
+          final parsed = MoralisParser.parseApprovalItem(
+            m,
+            currentChain,
+            ownerAddress: wallet,
+          );
           if (parsed.token.isEmpty || parsed.spenderAddress.isEmpty) continue;
           out.add(parsed);
         }
       } else {
-        print("[GlobalScanner] Moralis Error: ${res.statusCode} ${res.body}");
+        throw "Global approval scan failed: Moralis returned ${res.statusCode}";
       }
     } catch (e) {
-      print("[GlobalScanner] Exception: $e");
+      throw e.toString();
     }
 
     RiskEngine.evaluateApprovals(out);
