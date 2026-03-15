@@ -144,13 +144,11 @@ class SettingsScreen extends StatelessWidget {
                 loc.t('settingsAboutContent')),
             isTransparent: true,
           ),
-          _buildSettingsRow(
+          _buildExternalLinkRow(
             context,
             loc.t('settingsAboutPrivacy'),
             Icons.privacy_tip_outlined,
-            _buildLegalScreen(context, loc, loc.t('settingsAboutPrivacy'),
-                loc.t('settingsPrivacyPolicyContent')),
-            isTransparent: true,
+            'https://vovan1980.github.io/drainshield/privacy.html',
           ),
           _buildSettingsRow(
             context,
@@ -432,6 +430,27 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildExternalLinkRow(
+    BuildContext context,
+    String title,
+    IconData icon,
+    String url,
+  ) {
+    return _buildSettingsRow(
+      context,
+      title,
+      icon,
+      const SizedBox.shrink(), // Dummy, won't be used
+      isTransparent: true,
+      onOverrideTap: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+    );
+  }
+
   Widget _buildSettingsRow(
     BuildContext context,
     String title,
@@ -440,6 +459,7 @@ class SettingsScreen extends StatelessWidget {
     bool isPremium = false,
     bool isCompact = false,
     bool isTransparent = false,
+    VoidCallback? onOverrideTap,
   }) {
     return Padding(
       padding: EdgeInsets.only(bottom: isCompact ? 0 : 8),
@@ -461,7 +481,12 @@ class SettingsScreen extends StatelessWidget {
         ),
         child: ListTile(
           onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+            if (onOverrideTap != null) {
+              onOverrideTap();
+            } else {
+              Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => screen));
+            }
           },
           leading: Container(
             width: 36,
