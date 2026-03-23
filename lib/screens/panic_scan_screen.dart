@@ -43,11 +43,12 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
 
   List<String> _getScanSteps(LocalizationService loc) {
     return [
-      loc.t('panicStep1'),
-      loc.t('panicStep2'),
-      loc.t('panicStep3'),
-      loc.t('panicStep4'),
-      loc.t('panicStep5'),
+      loc.t('panicScanStep1'),
+      loc.t('panicScanStep2'),
+      loc.t('panicScanStep3'),
+      loc.t('panicScanStep4'),
+      loc.t('panicScanStep5'),
+      loc.t('panicScanStep6'),
     ];
   }
 
@@ -158,7 +159,7 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
   }
 
   Future<void> _simulateScanProgress() async {
-    const int totalSteps = 5;
+    final int totalSteps = _getScanSteps(LocalizationService.instance).length;
     const int delayPerStepMs = 800;
     const int updatesPerStep = 20;
 

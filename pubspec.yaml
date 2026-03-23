@@ -2,7 +2,7 @@ name: drainshield_app
 description: "DrainShield mobile security app"
 publish_to: 'none'
 
-version: 0.1.0+1
+version: 0.1.3+5
 
 environment:
   sdk: '>=3.3.4 <4.0.0'
@@ -24,15 +24,17 @@ dependencies:
   path_provider: 2.1.5
   path: ^1.9.0
   url_launcher_android: 6.3.14
+  package_info_plus: ^8.1.0
 
   in_app_purchase: ^3.2.0
-  flutter_local_notifications: ^17.2.2
-  timezone: ^0.9.4
+  flutter_local_notifications: ^21.0.0
+  timezone: ^0.11.0
   audioplayers: ^6.1.0
   vibration: ^2.0.1
   workmanager: ^0.9.0
   connectivity_plus: ^7.0.0
   sqflite: ^2.3.0
+  app_settings: ^7.0.0
 
 dependency_overrides:
   sqflite: 2.3.3+1
@@ -44,6 +46,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.4
 
 flutter:
   uses-material-design: true
@@ -66,4 +69,4 @@ flutter_native_splash: # Added flutter_native_splash configuration
   color: "#05070B"
   android_12:
     color: "#05070B"
-  fullscreen: true
+  fullscreen: false

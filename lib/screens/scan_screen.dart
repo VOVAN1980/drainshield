@@ -15,6 +15,7 @@ import '../services/security/security_event_service.dart';
 /// Does NOT use [GlobalApprovalScanner] — that belongs exclusively to Panic Mode.
 class ScanScreen extends StatefulWidget {
   final String address;
+  final int? chainId;
   final String? targetTokenAddress;
   final String? targetTokenName;
   final String? targetTokenSymbol;
@@ -24,6 +25,7 @@ class ScanScreen extends StatefulWidget {
   const ScanScreen({
     super.key,
     required this.address,
+    this.chainId,
     this.targetTokenAddress,
     this.targetTokenName,
     this.targetTokenSymbol,
@@ -46,12 +48,9 @@ class _ScanScreenState extends State<ScanScreen> {
   // Make Safe specific scan steps
   List<String> _getScanSteps(LocalizationService loc) {
     return [
-      loc.t('panicStep1'), // Scanning Protocols
-      loc.t('panicStep2'), // Analyzing Approvals
-      loc.t('scanIntelSync'), // Syncing Threat Intel
-      loc.t('panicStep3'), // Evaluating Reputation
-      loc.t('panicStep4'), // Calculating Exposure
-      loc.t('panicStep5'), // Generating Report
+      loc.t('basicScanStep1'), // Scanning Protocols
+      loc.t('basicScanStep2'), // Analyzing Approvals
+      loc.t('basicScanStep3'), // Generating Report
     ];
   }
 
@@ -72,6 +71,7 @@ class _ScanScreenState extends State<ScanScreen> {
       list = await ApprovalScanService.scan(
         widget.address,
         targetTokenAddress: widget.targetTokenAddress,
+        chainId: widget.chainId,
       );
     } catch (e) {
       _errorMessage = e is String ? e : e.toString();

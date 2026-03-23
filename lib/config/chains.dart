@@ -28,6 +28,7 @@ class ChainConfig {
     42161: 'arbitrum',
     10: 'optimism',
     8453: 'base',
+    100: 'gnosis',
   };
 
   /// Returns the Moralis chain slug for a given chainId.
@@ -43,6 +44,7 @@ class ChainConfig {
     42161: 'Arbitrum',
     10: 'Optimism',
     8453: 'Base',
+    100: 'Gnosis',
   };
 
   static String getChainName(int chainId) {
@@ -56,6 +58,7 @@ class ChainConfig {
     42161: 'https://arbiscan.io',
     10: 'https://optimistic.etherscan.io',
     8453: 'https://basescan.org',
+    100: 'https://gnosisscan.io',
   };
 
   static String? getExplorerUrl(int chainId, String address) {

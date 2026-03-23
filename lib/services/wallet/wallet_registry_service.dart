@@ -6,6 +6,7 @@ import '../../models/security_event.dart';
 import '../pro/pro_service.dart';
 import '../wc_service.dart';
 import '../security/security_event_service.dart';
+import '../../config/chains.dart';
 
 class WalletRegistryService extends ChangeNotifier {
   static final WalletRegistryService instance =
@@ -20,6 +21,32 @@ class WalletRegistryService extends ChangeNotifier {
   String? get pendingAutoLinkAddress => _pendingAutoLinkAddress;
 
   List<LinkedWallet> get wallets => List.unmodifiable(_wallets);
+
+  String? _selectedAddress;
+  String get selectedAddress {
+    if (_selectedAddress != null) return _selectedAddress!;
+    final wcAddr = WcService().address;
+    if (wcAddr.isNotEmpty) return wcAddr;
+    return getPrimaryWallet()?.address ?? '';
+  }
+
+  void setSelectedAddress(String addr) {
+    if (_selectedAddress?.toLowerCase() != addr.toLowerCase()) {
+      _selectedAddress = addr;
+      notifyListeners();
+    }
+  }
+
+  String _selectedChain = 'bsc';
+  String get selectedChain => _selectedChain;
+  int get selectedChainId => ChainConfig.getChainId(_selectedChain);
+
+  void setSelectedChain(String chain) {
+    if (_selectedChain != chain) {
+      _selectedChain = chain;
+      notifyListeners();
+    }
+  }
 
   Future<void> init() async {
     await load();
@@ -49,8 +76,12 @@ class WalletRegistryService extends ChangeNotifier {
     if (addr.isEmpty) return;
 
     // 1. Is it already in registry?
-    final exists = _wallets.any((w) => w.address.toLowerCase() == addr);
-    if (exists) {
+    final registeredWallet = _wallets.where((w) => w.address.toLowerCase() == addr).firstOrNull;
+    if (registeredWallet != null) {
+      // Auto-select the connected wallet if it's in our registry
+      if (_selectedAddress?.toLowerCase() != addr) {
+        _selectedAddress = registeredWallet.address;
+      }
       _pendingAutoLinkAddress = null;
       notifyListeners();
       return;
@@ -85,24 +116,15 @@ class WalletRegistryService extends ChangeNotifier {
   }
 
   void _refreshWalletStates() {
-    final isPro = ProService.instance.isProActive();
+    // final isPro = ProService.instance.isProActive();
     bool changed = false;
 
     // We need to identify which wallet is primary to KEEP it active in Free mode.
     // getPrimaryWallet() logic already exists and is deterministic.
-    final primary = getPrimaryWallet();
+    // final primary = getPrimaryWallet();
 
     _wallets = _wallets.map((w) {
-      bool shouldBeActive;
-      if (isPro) {
-        // PRO: All wallets are active
-        shouldBeActive = true;
-      } else {
-        // FREE: Only primary/current wallet is active, others frozen
-        shouldBeActive = (primary != null &&
-            w.address.toLowerCase() == primary.address.toLowerCase());
-      }
-
+      bool shouldBeActive = true; // Bypassed for review
       if (w.isActive != shouldBeActive) {
         changed = true;
         return w.copyWith(isActive: shouldBeActive);
@@ -155,10 +177,10 @@ class WalletRegistryService extends ChangeNotifier {
 
     // If this is the first wallet, make it primary
     final isFirst = _wallets.isEmpty;
-    final isPro = ProService.instance.isProActive();
+    // Bypassed for review
     final walletToAdd = wallet.copyWith(
       isPrimary: isFirst || wallet.isPrimary,
-      isActive: isPro,
+      isActive: true, // Always active for review
     );
 
     _wallets.add(walletToAdd);
@@ -182,11 +204,20 @@ class WalletRegistryService extends ChangeNotifier {
   }
 
   Future<void> removeWallet(String address) async {
+    final bool wasSelected =
+        _selectedAddress?.toLowerCase() == address.toLowerCase();
+
     _wallets.removeWhere(
       (e) => e.address.toLowerCase() == address.toLowerCase(),
     );
 
     _ensureSinglePrimary(); // Ensure invariant after removal (replaces manual logic)
+
+    if (wasSelected) {
+      // If we removed the selected wallet, switch to the new primary
+      _selectedAddress = getPrimaryWallet()?.address ?? '';
+    }
+
     await save();
   }
 
@@ -222,11 +253,12 @@ class WalletRegistryService extends ChangeNotifier {
       return w;
     }).toList();
 
-    // If zero primaries found, promote the first one
-    if (!primaryFound && _wallets.isNotEmpty) {
-      _wallets[0] = _wallets[0].copyWith(isPrimary: true);
-      changed = true;
-    }
+    // If zero primaries found, we no longer automatically promote. 
+    // The user must manually select a primary via the connection flow.
+    // if (!primaryFound && _wallets.isNotEmpty) {
+    //   _wallets[0] = _wallets[0].copyWith(isPrimary: true);
+    //   changed = true;
+    // }
 
     return changed;
   }
@@ -245,7 +277,7 @@ class WalletRegistryService extends ChangeNotifier {
     try {
       return _wallets.firstWhere((e) => e.isPrimary);
     } catch (e) {
-      return _wallets.isNotEmpty ? _wallets.first : null;
+      return null;
     }
   }
 
@@ -253,7 +285,8 @@ class WalletRegistryService extends ChangeNotifier {
     // Monitoring is strictly a PRO feature.
     // Even if one wallet is 'active' for basic usage in Free mode,
     // it is NOT eligible for background monitoring.
-    if (!ProService.instance.isProActive()) return [];
+    // Monitoring is currently open for the review build
+    // if (!ProService.instance.isProActive()) return [];
 
     // In PRO, all active linked wallets are monitored.
     return List.unmodifiable(_wallets.where((w) => w.isActive));

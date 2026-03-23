@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'pro_service.dart';
 
 enum BillingStatus { loading, ready, error, processing }
 
@@ -23,36 +24,85 @@ class BillingService extends ChangeNotifier {
   final Set<String> _productIds = {'pro_monthly', 'pro_yearly'};
 
   Future<void> init() async {
-    final bool available = await _iap.isAvailable();
-    if (!available) {
-      _status = BillingStatus.error;
+    debugPrint("[BillingService] Initializing (kIsWeb=$kIsWeb, review=${ProService.isReviewBuild})...");
+    
+    if (ProService.isReviewBuild) {
+      debugPrint("[BillingService] Review build detected, skipping billing init.");
+      _status = BillingStatus.ready;
       notifyListeners();
       return;
     }
 
-    final purchaseUpdated = _iap.purchaseStream;
-    _subscription = purchaseUpdated.listen(
-      _onPurchaseUpdate,
-      onDone: () => _subscription.cancel(),
-      onError: (error) => debugPrint("Billing error: $error"),
-    );
+    // Web does not support in_app_purchase usually, and it's a common hang point
+    if (kIsWeb) {
+      debugPrint("[BillingService] Web detected, skipping billing init.");
+      _status = BillingStatus.ready;
+      notifyListeners();
+      return;
+    }
 
-    await loadProducts();
+    try {
+      final bool available = await _iap.isAvailable().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint("[BillingService] isAvailable() timed out after 5s.");
+          return false;
+        },
+      );
+
+      debugPrint("[BillingService] IAP available: $available");
+      if (!available) {
+        _status = BillingStatus.error;
+        notifyListeners();
+        return;
+      }
+
+      final purchaseUpdated = _iap.purchaseStream;
+      _subscription = purchaseUpdated.listen(
+        _onPurchaseUpdate,
+        onDone: () {
+          debugPrint("[BillingService] stream done.");
+          _subscription.cancel();
+        },
+        onError: (error) => debugPrint("[BillingService] stream error: $error"),
+      );
+
+      await loadProducts().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint("[BillingService] loadProducts() timed out after 10s.");
+        },
+      );
+      
+      debugPrint("[BillingService] Initialization complete.");
+    } catch (e) {
+      debugPrint("[BillingService] CRITICAL Error during init: $e");
+      _status = BillingStatus.error;
+    } finally {
+      if (_status == BillingStatus.loading) {
+        _status = BillingStatus.ready; // Ensure we don't hang UI
+      }
+      notifyListeners();
+    }
   }
 
   Future<void> loadProducts() async {
+    debugPrint("[BillingService] loadProducts() started...");
     _status = BillingStatus.loading;
     notifyListeners();
 
     try {
-      final response = await _iap.queryProductDetails(_productIds);
+      final response = await _iap.queryProductDetails(_productIds).timeout(
+        const Duration(seconds: 7),
+      );
       if (response.notFoundIDs.isNotEmpty) {
-        debugPrint("Products not found: ${response.notFoundIDs}");
+        debugPrint("[BillingService] Products not found: ${response.notFoundIDs}");
       }
       _products = response.productDetails;
       _status = BillingStatus.ready;
+      debugPrint("[BillingService] Products loaded: ${_products.length}");
     } catch (e) {
-      debugPrint("Failed to load products: $e");
+      debugPrint("[BillingService] Failed to load products: $e");
       _status = BillingStatus.error;
     }
     notifyListeners();

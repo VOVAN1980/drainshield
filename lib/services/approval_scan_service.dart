@@ -6,8 +6,6 @@ import "risk_engine.dart";
 import "wc_service.dart";
 import "moralis_parser.dart";
 import "moralis/moralis_config_service.dart";
-import "security/blockchain_analysis_service.dart";
-import "spender_intelligence_service.dart";
 
 class ApprovalScanService {
   static int? lastRiskScore;
@@ -16,14 +14,15 @@ class ApprovalScanService {
   static Future<List<ApprovalData>> scan(
     String wallet, {
     String? targetTokenAddress,
+    int? chainId,
   }) async {
     final apiKey = MoralisConfigService.key;
 
-    final activeChainId = WcService().currentChainId;
+    final activeChainId = chainId ?? WcService().currentChainId;
 
     final currentChain = ChainConfig.getMoralisChainSlug(activeChainId);
     if (currentChain == null) {
-      throw "Cannot scan approvals: Unsupported network (Chain ID: $activeChainId). Please switch to a supported network.";
+      throw "Cannot scan approvals: Unsupported network (Chain ID: $activeChainId).";
     }
 
     if (apiKey.isEmpty) {
@@ -48,17 +47,6 @@ class ApprovalScanService {
               parsed.token.toLowerCase() != targetTokenAddress.toLowerCase()) {
             continue;
           }
-          // Initial reputation lookup (local + remote cache)
-          final intel = SpenderIntelligenceService.instance;
-          parsed.reputation =
-              intel.getReputation(activeChainId, parsed.spenderAddress);
-          final label =
-              intel.getTrustedLabel(activeChainId, parsed.spenderAddress);
-          if (label != null) {
-            // Use Label from intelligence instead of raw spender address/name if available
-            parsed.copyWithEnrichment(discoveredName: label);
-          }
-
           out.add(parsed);
         }
       } else {
@@ -67,35 +55,6 @@ class ApprovalScanService {
     } catch (e) {
       throw e.toString();
     }
-
-    // Enrichment Phase: Deep Analysis
-    final analysis = BlockchainAnalysisService.instance;
-    await Future.wait(out.map((item) async {
-      try {
-        final result = await analysis.analyze(
-          walletAddress: wallet,
-          spenderAddress: item.spenderAddress,
-          chainSlug: currentChain,
-        );
-
-        // Update model with real signals
-        item.copyWithEnrichment(
-          isProxyContract: result.isProxyContract,
-          isUpgradeable: result.isUpgradeable,
-          hasOwnerPrivileges: result.hasOwnerPrivileges,
-          canPause: result.canPause,
-          canMint: result.canMint,
-          canBlacklist: result.canBlacklist,
-          previousInteractions: result.previousInteractions,
-          popularityScore: result.popularityScore,
-          isPopular: result.isPopular,
-          discoveredName: result.spenderName,
-        );
-      } catch (e) {
-        // Silently skip enrichment for failed probes to avoid blocking entire scan
-        print("Enrichment failed for ${item.spenderAddress}: $e");
-      }
-    }));
 
     RiskEngine.evaluate(out);
     updateScore(out);

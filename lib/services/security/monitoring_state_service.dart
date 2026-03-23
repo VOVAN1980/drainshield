@@ -66,9 +66,10 @@ class MonitoringStateService extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool isNewRisk(
-      String walletAddress, String spenderAddress, String tokenAddress) {
-    final key = "${spenderAddress.toLowerCase()}_${tokenAddress.toLowerCase()}";
+  bool isNewRisk(String walletAddress, String spenderAddress,
+      String tokenAddress, int chainId) {
+    final key =
+        "${chainId}_${spenderAddress.toLowerCase()}_${tokenAddress.toLowerCase()}";
     final walletKey = walletAddress.toLowerCase();
 
     final previousRisks = _lastRisks[walletKey] ?? {};

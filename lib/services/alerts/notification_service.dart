@@ -35,9 +35,15 @@ class NotificationService {
     tz.initializeTimeZones();
 
     await _notifications.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: _onTap,
     );
+
+    // Request permissions for Android 13+
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
 
     // Check for cold-start notification
     final details = await _notifications.getNotificationAppLaunchDetails();
@@ -54,6 +60,14 @@ class NotificationService {
         }
       }
     }
+  }
+
+  Future<bool> isPermissionGranted() async {
+    final status = await _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.areNotificationsEnabled();
+    return status ?? false;
   }
 
   void _onTap(NotificationResponse response) {
@@ -133,30 +147,62 @@ class NotificationService {
       debugPrint('[NotificationService] Muted by Quiet Mode: $title');
       return;
     }
-    const AndroidNotificationDetails androidDetails =
+
+    final soundSettings = SettingsService.instance.settings.soundSettings;
+    final soundId = soundSettings.selectedCriticalSoundId;
+    final resourceName = _mapSoundToResource('critical', soundId);
+
+    // Dynamic channel ID to force sound update on Android
+    final channelId = 'critical_v2_$soundId';
+
+    final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'critical_threats',
+      channelId,
       'Critical Threats',
-      channelDescription: 'Emergency alerts for token theft detection',
+      channelDescription: 'Emergency alerts with custom sound',
       importance: Importance.max,
       priority: Priority.high,
-      enableVibration: true,
-      playSound: true,
-      color: Color(0xFFFF4B4B),
+      enableVibration: soundSettings.vibrationEnabled,
+      playSound: soundSettings.soundEnabled,
+      sound: soundSettings.soundEnabled
+          ? RawResourceAndroidNotificationSound(resourceName)
+          : null,
+      color: const Color(0xFFFF4B4B),
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(
+    final NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
-      iOS: DarwinNotificationDetails(),
+      iOS: const DarwinNotificationDetails(
+        presentSound: true,
+        presentAlert: true,
+        presentBadge: true,
+      ),
     );
 
     await _notifications.show(
-      0,
-      title,
-      body,
-      platformDetails,
+      id: 0,
+      title: title,
+      body: body,
+      notificationDetails: platformDetails,
       payload: payload != null ? json.encode(payload) : null,
     );
+  }
+
+  String _mapSoundToResource(String type, String soundId) {
+    if (soundId == 'lion_roar') return 'lion_roar';
+
+    switch (type) {
+      case 'critical':
+        return 'critical_$soundId';
+      case 'alert':
+        return 'alert_$soundId';
+      case 'panic':
+        // Some panic sounds share names or are dedicated
+        if (soundId == 'panic_ultra' || soundId == 'emergency') return soundId;
+        return soundId;
+      default:
+        return 'alert_standard';
+    }
   }
 
   bool _isQuietMode() {
@@ -195,25 +241,41 @@ class NotificationService {
   Future<void> showWarningAlert(String title, String body,
       {Map<String, dynamic>? payload}) async {
     if (_isQuietMode()) return;
-    const AndroidNotificationDetails androidDetails =
+
+    final soundSettings = SettingsService.instance.settings.soundSettings;
+    final soundId = soundSettings.selectedAlertSoundId;
+    final resourceName = _mapSoundToResource('alert', soundId);
+
+    // Dynamic channel ID
+    final channelId = 'warning_v2_$soundId';
+
+    final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'security_warnings',
+      channelId,
       'Security Warnings',
       channelDescription: 'Alerts for high-risk approvals',
       importance: Importance.high,
       priority: Priority.high,
+      enableVibration: soundSettings.vibrationEnabled,
+      playSound: soundSettings.soundEnabled,
+      sound: soundSettings.soundEnabled
+          ? RawResourceAndroidNotificationSound(resourceName)
+          : null,
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(
+    final NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
-      iOS: DarwinNotificationDetails(),
+      iOS: const DarwinNotificationDetails(
+        presentSound: true,
+        presentAlert: true,
+      ),
     );
 
     await _notifications.show(
-      1,
-      title,
-      body,
-      platformDetails,
+      id: 1,
+      title: title,
+      body: body,
+      notificationDetails: platformDetails,
       payload: payload != null ? json.encode(payload) : null,
     );
   }
@@ -236,10 +298,10 @@ class NotificationService {
     );
 
     await _notifications.show(
-      2,
-      title,
-      body,
-      platformDetails,
+      id: 2,
+      title: title,
+      body: body,
+      notificationDetails: platformDetails,
       payload: payload != null ? json.encode(payload) : null,
     );
   }
@@ -247,9 +309,9 @@ class NotificationService {
   Future<void> scheduleSubscriptionExpiry(DateTime expiryDate) async {
     // Cancel any previous expiry notifications to avoid duplicates
     // We'll use specific IDs for expiry: 107 (7 days), 103 (3 days), 101 (1 day)
-    await _notifications.cancel(107);
-    await _notifications.cancel(103);
-    await _notifications.cancel(101);
+    await _notifications.cancel(id: 107);
+    await _notifications.cancel(id: 103);
+    await _notifications.cancel(id: 101);
 
     final now = DateTime.now();
 
@@ -285,14 +347,12 @@ class NotificationService {
             : "Your PRO subscription will expire $daysLeft. Don't forget to renew!";
 
         await _notifications.zonedSchedule(
-          id,
-          'Subscription Reminder',
-          body,
-          tz.TZDateTime.from(finalScheduled, tz.local),
-          platformDetails,
+          id: id,
+          title: 'Subscription Reminder',
+          body: body,
+          scheduledDate: tz.TZDateTime.from(finalScheduled, tz.local),
+          notificationDetails: platformDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
         );
       }
     }

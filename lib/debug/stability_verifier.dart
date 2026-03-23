@@ -63,7 +63,7 @@ class StabilityVerifier {
       const initSettings = InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       );
-      await plugin.initialize(initSettings);
+      await plugin.initialize(settings: initSettings);
       debugPrint('[StabilityVerifier] Notifications: INIT SUCCESS');
     } catch (e) {
       debugPrint('[StabilityVerifier] Notifications: INIT FAILED: $e');

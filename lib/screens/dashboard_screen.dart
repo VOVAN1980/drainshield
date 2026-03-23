@@ -62,6 +62,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   late Animation<double> _shieldGlow;
   int? _riskScore; // null => not scanned
   int _currentChainId = 0;
+  String _currentAddress = '';
+  bool _currentConnected = false;
   bool _isBooting = true;
   late AnimationController _bootCtrl;
 
@@ -114,8 +116,11 @@ class _DashboardScreenState extends State<DashboardScreen>
       await WcService().init(context);
 
       if (mounted) {
+        final wc = WcService();
         setState(() {
-          _currentChainId = WcService().currentChainId;
+          _currentChainId = wc.currentChainId;
+          _currentAddress = wc.address;
+          _currentConnected = wc.isConnected;
         });
       }
     });
@@ -124,12 +129,20 @@ class _DashboardScreenState extends State<DashboardScreen>
   void _onWalletUpdate() {
     if (!mounted) return;
     final wc = WcService();
-    if (!wc.isConnected) {
-      _riskScore = null;
-    } else if (_currentChainId != wc.currentChainId) {
+    final bool chainChanged = _currentChainId != wc.currentChainId;
+    final bool addressChanged = _currentAddress != wc.address;
+    final bool connectedChanged = _currentConnected != wc.isConnected;
+
+    if (!chainChanged && !addressChanged && !connectedChanged) return;
+
+    // Reset score if chain changed
+    if (chainChanged) {
       _riskScore = null;
       _currentChainId = wc.currentChainId;
     }
+    _currentAddress = wc.address;
+    _currentConnected = wc.isConnected;
+
     setState(() {});
   }
 
@@ -140,6 +153,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   void _onHealthUpdate() {
     if (mounted) setState(() {});
   }
+
 
   Widget _buildSystemStatus(LocalizationService loc) {
     final health = SystemHealthService.instance.state;
@@ -314,6 +328,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void dispose() {
     WcService().removeListener(_onWalletUpdate);
+    WalletRegistryService.instance.removeListener(_onRegistryUpdate);
+    SystemHealthService.instance.removeListener(_onHealthUpdate);
     _entranceCtrl.dispose();
     _shieldPulseCtrl.dispose();
     _bootCtrl.dispose();
@@ -327,24 +343,25 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Future<void> _onPanicTap() async {
     final wc = WcService();
-    if (!wc.isConnected) return;
+    final registry = WalletRegistryService.instance;
+    final activeAddress = registry.selectedAddress;
+    final bool isSessionMatch = wc.isConnected && wc.address.toLowerCase() == activeAddress.toLowerCase();
 
-    final isPro = ProService.instance.isProActive();
-    if (!isPro) {
-      // PRO Gating for Panic Mode
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ProScreen()),
-        );
-      }
+    if (!isSessionMatch) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 4),
+          backgroundColor: Colors.redAccent,
+          content: Text(LocalizationService.instance.t('dashboardPanicConnectFirst')),
+        ),
+      );
       return;
     }
 
     // Navigate directly to the full-screen Panic Mode flow
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PanicScanScreen(address: wc.address)),
+      MaterialPageRoute(builder: (_) => PanicScanScreen(address: activeAddress)),
     );
 
     // Update score after panic scan completes
@@ -383,11 +400,29 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
     final wc = WcService();
-    final bool isConnected = wc.isConnected;
-    final String walletAddress = wc.address;
-    final Color accentColor =
-        !isConnected ? const Color(0xFF00B8FF) : const Color(0xFF00FF9D);
+    final registry = WalletRegistryService.instance;
+    
+    // Unified Display Address: registry first, then active session (ONLY if connected)
+    final String displayAddress = wc.isConnected 
+        ? (registry.selectedAddress.isNotEmpty ? registry.selectedAddress : wc.address)
+        : '';
+        
+    final bool isSessionMatch = wc.isConnected && 
+        wc.address.toLowerCase().trim() == displayAddress.toLowerCase().trim();
+        
+    final int effectiveChainId = (wc.isConnected && wc.currentChainId != 0) 
+        ? wc.currentChainId 
+        : (registry.selectedChainId != 0 ? registry.selectedChainId : 56);
+    
+    final bool isReadyToScan = displayAddress.isNotEmpty;
+    
+    // Green for active session, Blue for read-only / mismatch
+    final Color accentColor = isSessionMatch 
+        ? const Color(0xFF00FF9D) 
+        : const Color(0xFF00B8FF);
+        
     final bool hasScan = _riskScore != null;
+    
     return Scaffold(
       backgroundColor: const Color(0xFF030509),
       body: DsBackground(
@@ -395,10 +430,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         child: Stack(
           children: [
             // ── Main layout ─────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: Column(
                 children: [
+                  const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -469,7 +505,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                   const SizedBox(height: 12),
                   _buildAutoLinkPrompt(loc),
-                  const Spacer(),
+                  const SizedBox(height: 16),
                   // ── Status card — entrance fade+slide ──
                   FadeTransition(
                     opacity: _entranceFade,
@@ -496,7 +532,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (!isConnected) ...[
+                                if (!isReadyToScan) ...[
                                   _withShieldPulse(
                                     AnimatedBuilder(
                                       animation: _bootCtrl,
@@ -541,7 +577,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      loc.t('dashboardReadyToScan'),
+                                      displayAddress.isEmpty 
+                                        ? loc.t('dashboardSystemReadyTitle') 
+                                        : loc.t('dashboardReadyToScan'),
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 20,
@@ -550,32 +588,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.05),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                          color: Colors.white.withOpacity(0.1),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        loc
-                                            .t(
-                                              'chain${ChainConfig.getChainName(wc.currentChainId).replaceAll(' ', '')}',
-                                            )
-                                            .toUpperCase(),
-                                        style: TextStyle(
-                                          color: accentColor,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.5,
-                                        ),
-                                      ),
-                                    ),
+                                    _buildChainBadge(loc, effectiveChainId, accentColor),
                                     const SizedBox(height: 12),
                                     Text(
                                       loc.t('dashboardNoRiskScore'),
@@ -585,70 +598,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
-                                    const SizedBox(height: 10),
-                                    GestureDetector(
-                                      onTap: () => wc.disconnect(),
-                                      child: Text(
-                                        loc.t('dashboardWalletTapDisconnect', {
-                                          'address': _short(walletAddress),
-                                        }),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: AppColors.tertiaryText,
-                                          fontSize: 13,
-                                          fontFamily: 'monospace',
-                                        ),
-                                      ),
-                                    ),
+                                     const SizedBox(height: 10),
+                                    _buildAddressInfo(loc, displayAddress, wc, isSessionMatch),
                                   ] else ...[
-                                    Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: 120,
-                                          height: 120,
-                                          child: CircularProgressIndicator(
-                                            value: (_riskScore!.clamp(0, 100)) /
-                                                100,
-                                            strokeWidth: 8,
-                                            backgroundColor:
-                                                Colors.white.withOpacity(0.05),
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                              accentColor,
-                                            ),
-                                            strokeCap: StrokeCap.round,
-                                          ),
-                                        ),
-                                        Column(
-                                          children: [
-                                            Text(
-                                              "${_riskScore!}%",
-                                              style: TextStyle(
-                                                fontSize: 34,
-                                                fontWeight: FontWeight.w900,
-                                                color: accentColor,
-                                                shadows: [
-                                                  Shadow(
-                                                    color: accentColor
-                                                        .withOpacity(0.5),
-                                                    blurRadius: 20,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            Text(
-                                              loc.t('dashboardRiskScoreLabel'),
-                                              style: const TextStyle(
-                                                color: AppColors.tertiaryText,
-                                                fontSize: 10,
-                                                letterSpacing: 2,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                                    _buildRiskScoreGauge(accentColor),
                                     const SizedBox(height: 8),
                                     Text(
                                       loc.t('dashboardScanResult'),
@@ -659,47 +612,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: accentColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: accentColor.withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        loc
-                                            .t(
-                                              'chain${ChainConfig.getChainName(wc.currentChainId).replaceAll(' ', '')}',
-                                            )
-                                            .toUpperCase(),
-                                        style: TextStyle(
-                                          color: accentColor,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.5,
-                                        ),
-                                      ),
-                                    ),
+                                    _buildChainBadge(loc, effectiveChainId, accentColor),
                                     const SizedBox(height: 12),
-                                    GestureDetector(
-                                      onTap: () => wc.disconnect(),
-                                      child: Text(
-                                        loc.t('dashboardWalletTapDisconnect', {
-                                          'address': _short(walletAddress),
-                                        }),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: AppColors.tertiaryText,
-                                          fontSize: 13,
-                                          fontFamily: 'monospace',
-                                        ),
-                                      ),
-                                    ),
+                                    _buildAddressInfo(loc, displayAddress, wc, isSessionMatch),
                                   ],
                                 ],
                               ],
@@ -735,7 +650,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                             onPressed: _isBooting
                                 ? null
                                 : () async {
-                                    if (!isConnected) {
+                                    if (!wc.isConnected) {
                                       wc.connect(context);
                                       return;
                                     }
@@ -743,7 +658,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) =>
-                                            ScanScreen(address: walletAddress),
+                                            ScanScreen(
+                                              address: displayAddress,
+                                              chainId: effectiveChainId,
+                                            ),
                                       ),
                                     );
                                     if (mounted) {
@@ -754,14 +672,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     }
                                   },
                             gradient: LinearGradient(
-                              colors: !isConnected
+                              colors: isSessionMatch
                                   ? [
-                                      const Color(0xFF00B8FF),
-                                      const Color(0xFF0055FF),
-                                    ]
-                                  : [
                                       const Color(0xFF00FF9D),
                                       const Color(0xFF00B8FF),
+                                    ]
+                                  : [
+                                      const Color(0xFF00B8FF),
+                                      const Color(0xFF0055FF),
                                     ],
                             ),
                             boxShadow: [
@@ -773,7 +691,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                             ],
                             child: Center(
                               child: Text(
-                                !isConnected
+                                !wc.isConnected
                                     ? loc.t('dashboardConnectWalletBtn')
                                     : loc.t('dashboardMakeSafeBtn'),
                                 maxLines: 1,
@@ -813,7 +731,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 20),
                   // ── PANIC MODE — fade+slide entrance + press scale ──
                   DsFadeSlide(
                     delay: const Duration(milliseconds: 90),
@@ -821,7 +739,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       opacity: _isBooting ? 0.5 : 1.0,
                       child: DsSlideAction(
                         onAction:
-                            (!isConnected || _isBooting) ? null : _onPanicTap,
+                            (!isSessionMatch || _isBooting) ? null : _onPanicTap,
                         label: loc.t('dashboardPanicModeBtn'),
                       ),
                     ),
@@ -833,6 +751,164 @@ class _DashboardScreenState extends State<DashboardScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildChainBadge(LocalizationService loc, int chainId, Color accentColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: accentColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: accentColor.withOpacity(0.3)),
+      ),
+      child: Text(
+        loc.t('chain${ChainConfig.getChainName(chainId).replaceAll(' ', '')}').toUpperCase(),
+        style: TextStyle(
+          color: accentColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRiskScoreGauge(Color accentColor) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox(
+          width: 120,
+          height: 120,
+          child: CircularProgressIndicator(
+            value: (_riskScore!.clamp(0, 100)) / 100,
+            strokeWidth: 8,
+            backgroundColor: Colors.white.withOpacity(0.05),
+            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+            strokeCap: StrokeCap.round,
+          ),
+        ),
+        Column(
+          children: [
+            Text(
+              "${_riskScore!}%",
+              style: TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.w900,
+                color: accentColor,
+                shadows: [
+                  Shadow(
+                    color: accentColor.withOpacity(0.5),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              LocalizationService.instance.t('dashboardRiskScoreLabel'),
+              style: const TextStyle(
+                color: AppColors.tertiaryText,
+                fontSize: 10,
+                letterSpacing: 2,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddressInfo(
+    LocalizationService loc,
+    String address,
+    WcService wc,
+    bool isSessionMatch,
+  ) {
+    if (address.isEmpty) return const SizedBox.shrink();
+
+    final registry = WalletRegistryService.instance;
+    final wallet = registry.wallets.firstWhere(
+      (w) => w.address.toLowerCase() == address.toLowerCase(),
+      orElse: () => LinkedWallet(
+          address: address, label: 'Wallet', addedAt: DateTime.now()),
+    );
+
+    return Column(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: wc.isConnected
+              ? () {
+                  wc.disconnect();
+                }
+              : null,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: Colors.transparent,
+            child: Column(
+              children: [
+                Text(
+                  wallet.label,
+                  style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  _short(address),
+                  style: const TextStyle(
+                      color: AppColors.tertiaryText,
+                      fontSize: 13,
+                      fontFamily: 'monospace'),
+                ),
+                if (isSessionMatch)
+                  Text(
+                    loc.t('dashboardWalletTapDisconnectHint'),
+                    style: TextStyle(
+                        color: const Color(0xFF00FF9D).withOpacity(0.5),
+                        fontSize: 9),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (wc.isConnected && !isSessionMatch)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: Text(
+              loc.t('dashboardStatusReadOnly'),
+              style: const TextStyle(
+                  color: Colors.orange,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold),
+            ),
+          )
+        else if (!wc.isConnected)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+            ),
+            child: Text(
+              loc.t('dashboardStatusBrowser'),
+              style: const TextStyle(
+                  color: Colors.blue,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+      ],
     );
   }
 }

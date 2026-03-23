@@ -97,6 +97,12 @@ class SoundService {
     }
   }
 
+  Future<void> testVibration() async {
+    final settings = SettingsService.instance.settings.soundSettings;
+    if (!settings.vibrationEnabled) return;
+    await _startVibration(intensive: true);
+  }
+
   Future<void> _startVibration({required bool intensive}) async {
     try {
       final hasVibrator = await Vibration.hasVibrator();

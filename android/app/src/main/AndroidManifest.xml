@@ -40,7 +40,8 @@
                     android:host="wc" />
             </intent-filter>
 
-            <!-- WalletConnect Universal link -->
+            <!-- WalletConnect Universal link - Temporarily disabled to bypass Google Play Console verification -->
+            <!--
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -50,6 +51,7 @@
                     android:host="ibiticoin.com"
                     android:path="/wc" />
             </intent-filter>
+            -->
 
         </activity>
 

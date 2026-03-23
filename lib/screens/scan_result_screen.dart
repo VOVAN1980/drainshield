@@ -74,6 +74,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _queueSub?.cancel();
+    super.dispose();
+  }
+
   String _key(ApprovalData a) => "${a.token}:${a.spenderAddress}";
   Color _badgeColor(RiskLabel r) {
     switch (r) {

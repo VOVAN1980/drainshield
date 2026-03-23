@@ -44,12 +44,17 @@ class _ProScreenState extends State<ProScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (!status.isPro || _isExpiring(status)) ...[
-                          _buildPlanSelector(loc),
+                        if (!status.isPro) ...[
+                          _buildReviewNoticeCard(loc),
+                          const SizedBox(height: 32),
+                        ] else ...[
+                          if (_isExpiring(status)) ...[
+                            _buildPlanSelector(loc),
+                            const SizedBox(height: 32),
+                          ],
+                          _buildSubscriptionDetails(loc, status),
                           const SizedBox(height: 32),
                         ],
-                        _buildSubscriptionDetails(loc, status),
-                        const SizedBox(height: 32),
                         _buildFeatureSection(loc),
                         const SizedBox(height: 48),
                         if (isProcessing)
@@ -57,10 +62,12 @@ class _ProScreenState extends State<ProScreen> {
                             child: CircularProgressIndicator(
                                 color: Color(0xFFFFD25A)),
                           )
+                        else if (status.isPro)
+                          _buildMainAction(loc, status, billing)
                         else
-                          _buildMainAction(loc, status, billing),
+                          const SizedBox.shrink(),
                         const SizedBox(height: 24),
-                        _buildFooter(loc, billing),
+                        if (status.isPro) _buildFooter(loc, billing),
                       ],
                     ),
                   ),
@@ -84,6 +91,47 @@ class _ProScreenState extends State<ProScreen> {
   bool _isExpiring(ProStatus status) {
     if (!status.isPro || status.expiryDate == null) return false;
     return status.expiryDate!.difference(DateTime.now()).inDays < 3;
+  }
+
+  Widget _buildReviewNoticeCard(LocalizationService loc) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFD25A).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFFFD25A).withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  color: Color(0xFFFFD25A), size: 20),
+              SizedBox(width: 12),
+              Text(
+                "Limited Review Build",
+                style: TextStyle(
+                  color: Color(0xFFFFD25A),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "Google Play Billing and subscription management are disabled in this binary. All core security features (Approval Scanning, Risk Scoring) remain fully functional for testing purposes.",
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildGoldHeader(BuildContext context, LocalizationService loc) {
@@ -332,6 +380,8 @@ class _ProScreenState extends State<ProScreen> {
             Icons.notifications_active_rounded),
         _buildFeatureItem(loc.t('proFreezeTitle'), loc.t('proFreezeSub'),
             Icons.ac_unit_rounded),
+        _buildFeatureItem(loc.t('proMultiChainTitle'),
+            loc.t('proMultiChainSub'), Icons.layers_rounded),
         const SizedBox(height: 12),
         _buildSectionHeader(loc.t('proFeatureDevelopment')),
         const SizedBox(height: 20),

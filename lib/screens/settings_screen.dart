@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/localization_service.dart';
 import '../widgets/design/ds_background.dart';
@@ -10,8 +11,30 @@ import 'settings/security_settings_screen.dart';
 import 'settings/subscription_screen.dart';
 import 'settings/language_settings_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  PackageInfo? _packageInfo;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPackageInfo();
+  }
+
+  Future<void> _initPackageInfo() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _packageInfo = info;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,12 +113,12 @@ class SettingsScreen extends StatelessWidget {
                   _buildSectionHeader(loc.t('settingsAboutTitle')),
                   _buildAboutSection(context, loc),
                   const SizedBox(height: 32),
-                  const Center(
+                  Center(
                     child: Opacity(
                       opacity: 0.5,
                       child: Text(
-                        "DrainShield v0.1.0 – MVP Public Release",
-                        style: TextStyle(
+                        "Version ${_packageInfo?.version ?? '...'}",
+                        style: const TextStyle(
                           color: AppColors.tertiaryText,
                           fontSize: 10,
                         ),
@@ -150,13 +173,11 @@ class SettingsScreen extends StatelessWidget {
             Icons.privacy_tip_outlined,
             'https://vovan1980.github.io/drainshield/privacy.html',
           ),
-          _buildSettingsRow(
+          _buildExternalLinkRow(
             context,
             loc.t('settingsAboutTerms'),
             Icons.description_outlined,
-            _buildLegalScreen(context, loc, loc.t('settingsAboutTerms'),
-                loc.t('settingsTermsOfServiceContent')),
-            isTransparent: true,
+            'https://vovan1980.github.io/drainshield/terms.html',
           ),
           _buildSettingsRow(
             context,

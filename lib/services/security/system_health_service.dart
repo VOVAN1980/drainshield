@@ -73,6 +73,9 @@ class SystemHealthService extends ChangeNotifier {
   @override
   void dispose() {
     _connectivitySub?.cancel();
+    ThreatIntelligenceService.instance.removeListener(_refreshState);
+    ProService.instance.removeListener(_refreshState);
+    SettingsService.instance.removeListener(_refreshState);
     super.dispose();
   }
 }

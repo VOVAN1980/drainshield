@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/linked_wallet.dart';
 import '../../services/wallet/wallet_registry_service.dart';
@@ -18,12 +19,196 @@ class LinkedWalletsScreen extends StatefulWidget {
 class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _labelController = TextEditingController();
+  bool _isProcessingPrimary = false;
+  bool _isWaitingForNewSession = false; // Guard: ignore events until WC modal is open
+  Timer? _primaryTimeoutTimer;
+  void Function()? _wcListener;
 
   @override
   void dispose() {
     _addressController.dispose();
     _labelController.dispose();
+    _cleanupPrimaryFlow();
     super.dispose();
+  }
+
+  void _cleanupPrimaryFlow() {
+    _primaryTimeoutTimer?.cancel();
+    _primaryTimeoutTimer = null;
+    final listener = _wcListener;
+    if (listener != null) {
+      WcService().removeListener(listener);
+      _wcListener = null;
+    }
+    if (mounted) {
+      setState(() => _isProcessingPrimary = false);
+    }
+  }
+
+  Future<void> _handleSetPrimary(LinkedWallet targetWallet) async {
+    final loc = LocalizationProvider.of(context);
+    final wc = WcService();
+    final registry = WalletRegistryService.instance;
+
+    // 1. Confirm with user
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1117),
+        title: Text(loc.t('linkedWalletsConfirmPrimaryTitle'), style: const TextStyle(color: Colors.white)),
+        content: Text(loc.t('linkedWalletsConfirmPrimaryMessage'), style: const TextStyle(color: AppColors.secondaryText)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(loc.t('panicCancel'))),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(loc.t('panicConfirm'))),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _isProcessingPrimary = true;
+      _isWaitingForNewSession = false;
+    });
+
+    // 2. Disconnect existing session and wait for WC to fully clear state
+    if (wc.isConnected) {
+      await wc.disconnect();
+      await Future.delayed(const Duration(milliseconds: 800));
+    }
+    if (!mounted) { _cleanupPrimaryFlow(); return; }
+
+    // 3. Now mark that we're waiting for a NEW connection (ignores disconnect events)
+    setState(() => _isWaitingForNewSession = true);
+
+    _primaryTimeoutTimer = Timer(const Duration(seconds: 90), () {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(loc.t('linkedWalletsPrimaryChangeCancelled')), backgroundColor: Colors.orange),
+        );
+        _cleanupPrimaryFlow();
+      }
+    });
+
+    _wcListener = () {
+      // Guard: ignore all events until we're actually waiting for the new session
+      if (!_isWaitingForNewSession) return;
+      // Only react when user has chosen a wallet
+      if (!wc.isConnected) return;
+
+      final connectedAddr = wc.address.toLowerCase().trim();
+      final targetAddr = targetWallet.address.toLowerCase().trim();
+
+      if (connectedAddr == targetAddr) {
+        // SUCCESS: Perfect match
+        registry.setPrimaryWallet(targetWallet.address);
+        registry.setSelectedAddress(targetWallet.address);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(loc.t('linkedWalletsPrimaryChangeSuccess')), backgroundColor: Colors.green),
+          );
+        }
+        _cleanupPrimaryFlow();
+      } else {
+        // MISMATCH: Stop listening immediately to avoid recursion
+        final listener = _wcListener;
+        if (listener != null) {
+          wc.removeListener(listener);
+          _wcListener = null;
+        }
+        _primaryTimeoutTimer?.cancel();
+        _primaryTimeoutTimer = null;
+        if (mounted) {
+          setState(() {
+            _isProcessingPrimary = false;
+            _isWaitingForNewSession = false;
+          });
+          wc.disconnect();
+          _showMismatchDialog(loc, connectedAddr, targetWallet);
+        }
+      }
+    };
+    final listener = _wcListener;
+    if (listener != null) {
+      wc.addListener(listener);
+    }
+
+    // 4. Trigger Connect
+    try {
+      wc.connect(context);
+    } catch (e) {
+      debugPrint("[LinkedWalletsScreen] Connect error: $e");
+      _cleanupPrimaryFlow();
+    }
+  }
+
+  void _showSetNewPrimaryPrompt(LocalizationService loc) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1117),
+        title: Text(loc.t('linkedWalletsSetNewPrimaryTitle'),
+            style: const TextStyle(color: Colors.white)),
+        content: Text(loc.t('linkedWalletsSetNewPrimaryMessage'),
+            style: const TextStyle(color: AppColors.secondaryText)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(loc.t('panicCancel')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Simply scroll or show the list, the user can now manually tap "Set Primary"
+              // on any remaining wallet.
+            },
+            child: Text(loc.t('panicConfirm')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMismatchDialog(LocalizationService loc, String selected, LinkedWallet target) {
+    final wc = WcService();
+    final String guest = wc.guestName;
+    final String sShort = "${selected.substring(0, 6)}...${selected.substring(selected.length - 4)}";
+    final String tShort = "${target.address.substring(0, 6)}...${target.address.substring(target.address.length - 4)}";
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1117),
+        title: Text(loc.t('linkedWalletsMismatchTitle'),
+            style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+        content: Text(
+          loc.t('linkedWalletsMismatchMessage', {'selected': sShort, 'target': tShort, 'guest': guest}),
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _cleanupPrimaryFlow();
+            },
+            child: Text(loc.t('panicCancel')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Attempt to reconnect immediately
+              WcService().connect(this.context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00FF9D),
+              foregroundColor: Colors.black,
+            ),
+            child: Text(loc.t('linkedWalletsTryAgain')),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddWalletDialog() {
@@ -144,128 +329,168 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: DsBackground(
-        child: Column(
-          children: [
-            _buildAppBar(context, loc.t('linkedWalletsTitle')),
-            Expanded(
-              child: ListenableBuilder(
-                listenable: WalletRegistryService.instance,
-                builder: (context, _) {
-                  final wallets = WalletRegistryService.instance.wallets;
-                  final limit = ProService.instance.maxWallets();
-                  final isPro = ProService.instance.isProActive();
+      body: Stack(
+        children: [
+          DsBackground(
+            child: Column(
+              children: [
+                _buildAppBar(context, loc.t('linkedWalletsTitle')),
+                Expanded(
+                  child: ListenableBuilder(
+                    listenable: WalletRegistryService.instance,
+                    builder: (context, _) {
+                      final wallets = WalletRegistryService.instance.wallets;
+                      final limit = ProService.instance.maxWallets();
+                      // final isPro = ProService.instance.isProActive();
 
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 8),
-                        child: Text(
-                          loc.t('linkedWalletsEmptyGuidance'),
-                          style: const TextStyle(
-                            color: AppColors.tertiaryText,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Wrap(
-                          spacing: 16,
-                          runSpacing: 12,
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                "${wallets.length} / $limit ${loc.t('settingsSubscriptionWalletLimit')}",
-                                style: const TextStyle(
-                                  color: AppColors.tertiaryText,
-                                  fontSize: 13,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                      return Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 8),
+                            child: Text(
+                              loc.t('linkedWalletsEmptyGuidance'),
+                              style: const TextStyle(
+                                color: AppColors.tertiaryText,
+                                fontSize: 13,
                               ),
                             ),
-                            if (wallets.length < limit)
-                              ElevatedButton.icon(
-                                onPressed: _showAddWalletDialog,
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text(loc.t('linkedWalletsAddWallet')),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF00FF9D),
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    "${wallets.length} / $limit ${loc.t('settingsSubscriptionWalletLimit')}",
+                                    style: const TextStyle(
+                                      color: AppColors.tertiaryText,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                              ),
-                          ],
+                                const SizedBox(width: 16),
+                                if (wallets.length < limit)
+                                  ElevatedButton.icon(
+                                    onPressed: _isProcessingPrimary ? null : _showAddWalletDialog,
+                                    icon: const Icon(Icons.add, size: 18),
+                                    label: Text(loc.t('linkedWalletsAddWallet')),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00FF9D),
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: wallets.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.account_balance_wallet_outlined,
+                                          size: 64,
+                                          color: Colors.white.withOpacity(0.05),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          loc.t('linkedWalletsEmpty'),
+                                          style: const TextStyle(
+                                            color: AppColors.tertiaryText,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 48,
+                                          ),
+                                          child: Text(
+                                            loc.t('linkedWalletsEmptyGuidance'),
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              color: AppColors.tertiaryText,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                    ),
+                                    itemCount: wallets.length,
+                                    itemBuilder: (context, index) {
+                                      final wallet = wallets[index];
+                                      return _buildWalletCard(
+                                          wallet, loc, true, true);
+                                    },
+                                  ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_isProcessingPrimary)
+            Container(
+              color: Colors.black.withOpacity(0.8),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: Color(0xFF00FF9D)),
+                    const SizedBox(height: 24),
+                    Text(
+                      loc.t('linkedWalletsConnectFirst'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      loc.t('linkedWalletsConfirmPrimaryTitle').toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                        fontSize: 12,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TextButton(
+                      onPressed: _cleanupPrimaryFlow,
+                      child: Text(
+                        loc.t('panicCancel').toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFF00FF9D),
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                      Expanded(
-                        child: wallets.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.account_balance_wallet_outlined,
-                                      size: 64,
-                                      color: Colors.white.withOpacity(0.05),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      loc.t('linkedWalletsEmpty'),
-                                      style: const TextStyle(
-                                        color: AppColors.tertiaryText,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 48,
-                                      ),
-                                      child: Text(
-                                        loc.t('linkedWalletsEmptyGuidance'),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: AppColors.tertiaryText,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                ),
-                                itemCount: wallets.length + (isPro ? 0 : 1),
-                                itemBuilder: (context, index) {
-                                  if (index == wallets.length) {
-                                    return _buildRenewCTA(loc);
-                                  }
-                                  final wallet = wallets[index];
-                                  return _buildWalletCard(
-                                      wallet, loc, isPro, index < 1);
-                                },
-                              ),
-                      ),
-                    ],
-                  );
-                },
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -276,7 +501,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
     bool isPro,
     bool isFreeSlot,
   ) {
-    final bool isWalletActive = wallet.isActive;
+    final bool isWalletActive = wallet.isPrimary || isPro || isFreeSlot;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -315,25 +540,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                             : AppColors.tertiaryText,
                       ),
                     ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: isFreeSlot ? Colors.blueAccent : Colors.orange,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          isFreeSlot ? "F" : "P",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
+                    // PRO badges hidden for review
                   ],
                 ),
                 const SizedBox(width: 12),
@@ -386,6 +593,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                     ),
                   ),
                 PopupMenuButton(
+                  enabled: !_isProcessingPrimary,
                   icon: const Icon(Icons.more_vert,
                       color: AppColors.tertiaryText),
                   padding: EdgeInsets.zero,
@@ -414,8 +622,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                     ),
                     if (!wallet.isPrimary)
                       PopupMenuItem(
-                        onTap: () => WalletRegistryService.instance
-                            .setPrimaryWallet(wallet.address),
+                        onTap: () => _handleSetPrimary(wallet),
                         child: Row(
                           children: [
                             const Icon(Icons.star_outline,
@@ -430,9 +637,25 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                         ),
                       ),
                     PopupMenuItem(
-                      onTap: () => WalletRegistryService.instance.removeWallet(
-                        wallet.address,
-                      ),
+                      onTap: () async {
+                        final wc = WcService();
+                        if (wc.isConnected &&
+                            wc.address.toLowerCase() ==
+                                wallet.address.toLowerCase()) {
+                          await wc.disconnect();
+                        }
+                        
+                        final registry = WalletRegistryService.instance;
+                        final bool wasPrimary = wallet.isPrimary;
+                        
+                        await registry.removeWallet(wallet.address);
+
+                        if (wasPrimary && registry.wallets.isNotEmpty) {
+                          if (mounted) {
+                            _showSetNewPrimaryPrompt(loc);
+                          }
+                        }
+                      },
                       child: Row(
                         children: [
                           const Icon(Icons.delete_outline,

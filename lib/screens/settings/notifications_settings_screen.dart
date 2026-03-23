@@ -206,6 +206,7 @@ class NotificationsSettingsScreen extends StatelessWidget {
           final TimeOfDay? picked = await showTimePicker(
             context: context,
             initialTime: initialTime,
+            initialEntryMode: TimePickerEntryMode.dialOnly,
             builder: (context, child) {
               return Theme(
                 data: Theme.of(context).copyWith(

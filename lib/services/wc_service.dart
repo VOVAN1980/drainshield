@@ -20,6 +20,12 @@ class WcService extends ChangeNotifier {
     return parts.length >= 3 ? parts[2] : "";
   }
 
+  String get guestName {
+    final s = _modal?.session;
+    if (s == null) return "Wallet";
+    return s.peer?.metadata.name ?? "Wallet";
+  }
+
   int get currentChainId {
     final chainIdStr = _modal?.selectedChain?.chainId;
     if (chainIdStr != null) {

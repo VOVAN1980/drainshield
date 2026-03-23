@@ -12,6 +12,9 @@ class ProService extends ChangeNotifier {
   static final ProService instance = ProService._internal();
   ProService._internal();
 
+  /// If true, all PRO features are unlocked and billing checks are skipped (for Play Store review).
+  static bool isReviewBuild = true;
+
   static const String _key = 'pro_status';
   ProStatus _status = ProStatus.free();
 
@@ -125,6 +128,7 @@ class ProService extends ChangeNotifier {
   }
 
   bool isProActive() {
+    if (isReviewBuild) return true; // Unlocked for review
     if (!_status.isPro) return false;
     if (_status.expiryDate == null) return true;
     return _status.expiryDate!.isAfter(DateTime.now());

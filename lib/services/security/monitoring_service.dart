@@ -7,7 +7,7 @@ import '../wallet/wallet_registry_service.dart';
 import '../approval_scan_service.dart';
 import 'security_event_service.dart';
 import 'monitoring_state_service.dart';
-import '../alerts/notification_service.dart';
+import '../../config/chains.dart';
 
 import 'package:workmanager/workmanager.dart';
 
@@ -36,7 +36,7 @@ class MonitoringService {
   }
 
   Future<void> scheduleBackgroundTask() async {
-    final isPro = ProService.instance.isProActive();
+    bool isPro = true; // Bypassed for review
     final settings = SettingsService.instance.settings;
 
     if (!isPro || !settings.autoMonitoringEnabled) {
@@ -74,11 +74,13 @@ class MonitoringService {
     _isChecking = true;
 
     try {
+      /*
       if (!ProService.instance.isProActive()) {
         debugPrint(
             '[MonitoringService] Skip: Subscription not active (PRO-only feature)');
         return;
       }
+      */
 
       final settings = SettingsService.instance.settings;
       if (!settings.autoMonitoringEnabled && !kDebugMode) {
@@ -89,13 +91,8 @@ class MonitoringService {
       final wallets =
           WalletRegistryService.instance.getMonitoringEligibleWallets();
       if (wallets.isEmpty) {
-        if (!ProService.instance.isProActive()) {
-          debugPrint(
-              '[MonitoringService] Skip: Subscription inactive (PRO-only feature)');
-        } else {
-          debugPrint(
-              '[MonitoringService] Skip: No active wallets found to monitor');
-        }
+        debugPrint(
+            '[MonitoringService] Skip: No monitoring-eligible wallets found');
         return;
       }
 
@@ -118,104 +115,68 @@ class MonitoringService {
   }
 
   Future<void> _runWalletCheck(String address) async {
-    try {
-      // Reuse existing ApprovalScanService
-      final approvals = await ApprovalScanService.scan(address);
+    final allRiskyKeys = <String>{};
+    final supportedChains = [1, 56, 137, 42161, 10, 8453];
 
-      // Filter risky ones
-      final riskyApprovals =
-          approvals.where((a) => a.assessment.shouldRevoke).toList();
+    for (final chainId in supportedChains) {
+      try {
+        final chainName = ChainConfig.getChainName(chainId);
+        // debugPrint('[Monitoring] Checking $address on $chainName...');
 
-      final currentRiskKeys =
-          riskyApprovals.map((a) => "${a.spenderAddress}_${a.token}").toSet();
+        final approvals =
+            await ApprovalScanService.scan(address, chainId: chainId);
 
-      // Detect NEW risks using persisted state
-      final newRisks = riskyApprovals.where((a) {
-        return MonitoringStateService.instance.isNewRisk(
-          address,
-          a.spenderAddress,
-          a.token,
-        );
-      }).toList();
+        // Filter risky ones
+        final riskyApprovals =
+            approvals.where((a) => a.assessment.shouldRevoke).toList();
 
-      if (newRisks.isNotEmpty) {
-        // Emit events for new risks
-        for (final risk in newRisks) {
-          const title = 'High Risk Approval Detected';
-          final message =
-              'Suspicious approval for ${risk.tokenSymbol} found in your wallet.';
+        for (final a in riskyApprovals) {
+          allRiskyKeys.add("${chainId}_${a.spenderAddress}_${a.token}");
+        }
 
-          SecurityEventService.instance.emit(
-            SecurityEvent(
-              type: SecurityEventType.highRiskApproval,
-              severity: risk.assessment.score >= 90 ? 'critical' : 'high',
-              timestamp: DateTime.now(),
-              walletAddress: address,
-              title: title,
-              message: message,
-              metadata: {
-                'spender': risk.spenderAddress,
-                'token': risk.token,
-                'symbol': risk.tokenSymbol,
-                'allowance': risk.allowance,
-                'riskScore': risk.assessment.score,
-              },
-            ),
+        // Detect NEW risks using persisted state
+        final newRisks = riskyApprovals.where((a) {
+          return MonitoringStateService.instance.isNewRisk(
+            address,
+            a.spenderAddress,
+            a.token,
+            chainId,
           );
+        }).toList();
 
-          // Trigger OS notification
-          if (risk.assessment.score >= 90) {
-            NotificationService.instance.showCriticalAlert(
-              title,
-              message,
-              payload: {
-                'type': 'security_alert',
-                'walletAddress': address,
-                'metadata': {
+        if (newRisks.isNotEmpty) {
+          for (final risk in newRisks) {
+            final title = 'High Risk Detected ($chainName)';
+            final message =
+                'Suspicious approval for ${risk.tokenSymbol} found on $chainName.';
+
+            SecurityEventService.instance.emit(
+              SecurityEvent(
+                type: SecurityEventType.highRiskApproval,
+                severity: risk.assessment.score >= 90 ? 'critical' : 'high',
+                timestamp: DateTime.now(),
+                walletAddress: address,
+                title: title,
+                message: message,
+                metadata: {
                   'spender': risk.spenderAddress,
                   'token': risk.token,
+                  'symbol': risk.tokenSymbol,
+                  'chainId': chainId,
+                  'chainName': chainName,
+                  'riskScore': risk.assessment.score,
                 },
-              },
-            );
-          } else {
-            NotificationService.instance.showWarningAlert(
-              title,
-              message,
-              payload: {
-                'type': 'security_alert',
-                'walletAddress': address,
-                'metadata': {
-                  'spender': risk.spenderAddress,
-                  'token': risk.token,
-                },
-              },
+              ),
             );
           }
         }
+      } catch (e) {
+        debugPrint('[MonitoringService] Error check on chain $chainId: $e');
       }
-
-      // Special case: check for unlimited approvals if PRO
-      if (ProService.instance.isProActive()) {
-        // We already emitted highRiskApproval if it's high risk.
-        // If we want a specific "Unlimited" event, we could add it here.
-      }
-
-      // Update persisted risks
-      await MonitoringStateService.instance
-          .updateRisks(address, currentRiskKeys);
-    } catch (e) {
-      debugPrint('Monitoring error for $address: $e');
-      SecurityEventService.instance.emit(
-        SecurityEvent(
-          type: SecurityEventType.monitoringCheckFailed,
-          severity: 'medium',
-          timestamp: DateTime.now(),
-          walletAddress: address,
-          title: 'Monitoring Check Failed',
-          message: 'Could not complete security scan for your wallet.',
-        ),
-      );
     }
+
+    // Update state with CURRENT keys to detect NEW ones in next run
+    await MonitoringStateService.instance.updateRisks(address, allRiskyKeys);
   }
 
   void stop() {

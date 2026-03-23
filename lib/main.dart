@@ -146,7 +146,7 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
                 data: MediaQuery.of(context).copyWith(
                   textScaler: const TextScaler.linear(0.85),
                 ),
-                child: child!,
+                child: child ?? const SizedBox.shrink(),
               ),
             ),
           );

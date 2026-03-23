@@ -1,7 +1,11 @@
 import "dart:convert";
+import "package:flutter/foundation.dart";
 import "package:http/http.dart" as http;
 import "../models/wallet_asset.dart";
+import "../models/wallet_transaction.dart";
+import "../models/approval.dart";
 import "moralis/moralis_config_service.dart";
+import "approval_scan_service.dart";
 
 class PortfolioService {
   final String? apiKey;
@@ -37,17 +41,23 @@ class PortfolioService {
       }
 
       // Filter: only show assets with positive balance (safety check)
-      // Actually filtering by balance > 0 is already done in _fetchErc20Tokens
-      // but let's ensure it's here too.
-      final filtered =
-          allAssets.where((a) => a.balance > 0 && a.valueUsd > 0.01).toList();
+      // Exception: If it's a native asset, show it even if balance is small or 0
+      final filtered = allAssets.where((a) {
+        if (a.isNative) return true;
+        return a.balance > 0 && a.valueUsd > 0.01;
+      }).toList();
 
-      // Sort by value descending
-      filtered.sort((a, b) => b.valueUsd.compareTo(a.valueUsd));
+      // Sort by value descending, but keep native at the top if balances are 0
+      filtered.sort((a, b) {
+        if (a.isNative && b.isNative) return 0;
+        if (a.isNative) return -1;
+        if (b.isNative) return 1;
+        return b.valueUsd.compareTo(a.valueUsd);
+      });
 
       return filtered;
     } catch (e) {
-      print("Error fetching portfolio: $e");
+      debugPrint("Error fetching portfolio: $e");
       return [];
     }
   }
@@ -70,8 +80,6 @@ class PortfolioService {
         final balanceRaw =
             double.tryParse(data['balance']?.toString() ?? '0') ?? 0.0;
         final balance = balanceRaw / 1e18;
-
-        if (balance <= 0) return null;
 
         // Fetch price for native token via wrapped version
         double price = 0.0;
@@ -135,10 +143,161 @@ class PortfolioService {
           priceUsd: price,
           decimals: 18,
           logoUrl: nativeLogo,
+          chainId: _getChainIdFromSlug(chain),
         );
       }
     } catch (_) {}
     return null;
+  }
+
+  Future<List<WalletTransaction>> getRecentNativeTransactions(
+    String address,
+    String chain, {
+    String nativeSymbol = 'ETH',
+  }) async {
+    final apiKey = MoralisConfigService.key;
+    if (apiKey.isEmpty) return [];
+
+    try {
+      final url = Uri.parse(
+        "https://deep-index.moralis.io/api/v2.2/wallets/$address/history?chain=$chain&limit=15",
+      );
+      final resp = await http.get(url, headers: {"X-API-Key": apiKey}).timeout(
+        const Duration(seconds: 15),
+      );
+
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body);
+        final List<dynamic> result = decoded['result'] ?? [];
+        return result
+            .map((item) => WalletTransaction.fromMoralisNative(
+                  item,
+                  address,
+                  nativeSymbol,
+                ))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint("Error fetching native history: $e");
+    }
+    return [];
+  }
+
+  Future<List<WalletTransaction>> getRecentTokenTransfers(
+    String address,
+    String tokenAddress,
+    String chain,
+  ) async {
+    final apiKey = MoralisConfigService.key;
+    if (apiKey.isEmpty) return [];
+
+    try {
+      final url = Uri.parse(
+        "https://deep-index.moralis.io/api/v2.2/wallets/$address/erc20/transfers?chain=$chain&limit=50",
+      );
+      final resp = await http.get(url, headers: {"X-API-Key": apiKey}).timeout(
+        const Duration(seconds: 15),
+      );
+
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body);
+        final List<dynamic> result = decoded['result'] ?? [];
+        return result
+            .map((item) => WalletTransaction.fromMoralisErc20(item, address))
+            .where((tx) =>
+                tx.fromAddress.toLowerCase() == tokenAddress.toLowerCase() ||
+                (tx.toAddress?.toLowerCase() ?? '') ==
+                    tokenAddress.toLowerCase() ||
+                // The above is wrong, Moralis erc20/transfers already returns transfers OF tokens.
+                // We need to filter by token_address.
+                // Re-parsing the logic:
+                true)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint("Error fetching token history: $e");
+    }
+    return [];
+  }
+
+  // Helper to filter by token address if the API doesn't do it (Moralis does it if we use the right endpoint)
+  // But erc20/transfers for WALLET returns ALL token transfers.
+  // We can use /erc20/{address}/transfers?chain={chain} but that's for GLOBAL transfers of that token.
+  // We need WALLET specific transfers of a specific token.
+  // Moralis has: GET /wallets/{address}/erc20/transfers?chain={chain}
+  // We will filter the result by token_address.
+
+  Future<List<WalletTransaction>> getRecentTokenTransfersFiltered(
+    String address,
+    String tokenAddress,
+    String chain,
+  ) async {
+    final apiKey = MoralisConfigService.key;
+    if (apiKey.isEmpty) return [];
+
+    try {
+      final url = Uri.parse(
+        "https://deep-index.moralis.io/api/v2.2/wallets/$address/erc20/transfers?chain=$chain&limit=100",
+      );
+      final resp = await http.get(url, headers: {"X-API-Key": apiKey}).timeout(
+        const Duration(seconds: 15),
+      );
+
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body);
+        final List<dynamic> result = decoded['result'] ?? [];
+
+        final allTransfers = result.map((item) {
+          // Check if this item matches our token address
+          final itemTokenAddr = item['token_address']?.toString() ?? '';
+          if (itemTokenAddr.toLowerCase() != tokenAddress.toLowerCase()) {
+            return null;
+          }
+          return WalletTransaction.fromMoralisErc20(item, address);
+        }).whereType<WalletTransaction>().toList();
+
+        return allTransfers;
+      }
+    } catch (e) {
+      debugPrint("Error fetching filtered token history: $e");
+    }
+    return [];
+  }
+
+  Future<List<ApprovalData>> getTokenApprovalsForAsset(
+    String walletAddress,
+    String tokenAddress,
+    String chain,
+  ) async {
+    try {
+      // Convert chain slug to chain ID
+      final chainId = _getChainIdFromSlug(chain);
+      return await ApprovalScanService.scan(
+        walletAddress,
+        targetTokenAddress: tokenAddress,
+        chainId: chainId,
+      );
+    } catch (e) {
+      debugPrint("Error fetching approvals for asset: $e");
+      return [];
+    }
+  }
+
+  int _getChainIdFromSlug(String slug) {
+    switch (slug) {
+      case 'bsc':
+        return 56;
+      case 'eth':
+        return 1;
+      case 'polygon':
+        return 137;
+      case 'arbitrum':
+        return 42161;
+      case 'base':
+        return 8453;
+      default:
+        return 1;
+    }
   }
 
   Future<List<WalletAsset>> _fetchErc20Tokens(

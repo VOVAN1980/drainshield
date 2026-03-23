@@ -1,4 +1,5 @@
 import '../services/token_metadata_cache.dart';
+import '../config/chains.dart';
 
 class WalletAsset {
   final String name;
@@ -10,6 +11,7 @@ class WalletAsset {
   final double valueUsd;
   final int decimals;
   final bool isNative;
+  final int chainId;
 
   WalletAsset({
     required this.name,
@@ -21,6 +23,7 @@ class WalletAsset {
     required this.valueUsd,
     required this.decimals,
     this.isNative = false,
+    required this.chainId,
   });
 
   factory WalletAsset.fromMoralis(Map<String, dynamic> json, {String? chain}) {
@@ -78,6 +81,7 @@ class WalletAsset {
       valueUsd: double.tryParse(json['usd_value']?.toString() ?? '0') ?? 0.0,
       decimals: decimals,
       isNative: false,
+      chainId: chain != null ? ChainConfig.getChainId(chain) : 1,
     );
   }
 
@@ -88,6 +92,7 @@ class WalletAsset {
     String? logoUrl,
     required double priceUsd,
     required int decimals,
+    required int chainId,
   }) {
     return WalletAsset(
       name: name,
@@ -99,6 +104,7 @@ class WalletAsset {
       valueUsd: balance * priceUsd,
       decimals: decimals,
       isNative: true,
+      chainId: chainId,
     );
   }
 }

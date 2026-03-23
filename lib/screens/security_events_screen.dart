@@ -39,33 +39,13 @@ class _SecurityEventsScreenState extends State<SecurityEventsScreen> {
                   }
 
                   final bool isPro = ProService.instance.isProActive();
-                  const int maxFreeEvents = 5;
-                  final int eventsToShow = isPro
-                      ? events.length
-                      : (events.length > maxFreeEvents
-                          ? maxFreeEvents
-                          : events.length);
-                  final bool showsLockedTile =
-                      !isPro && events.length > maxFreeEvents;
+                  final int eventsToShow = isPro ? events.length : events.length.clamp(0, 5);
 
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: (isPro
-                        ? eventsToShow
-                        : (1 + eventsToShow + (showsLockedTile ? 1 : 0))),
+                    itemCount: eventsToShow,
                     itemBuilder: (context, index) {
-                      if (!isPro) {
-                        if (index == 0) {
-                          return _buildProUpgradeCard(loc);
-                        }
-                        if (showsLockedTile && index == (1 + eventsToShow)) {
-                          return _buildLockedHistoryTile(loc);
-                        }
-                        final eventIndex = index - 1;
-                        return _buildEventTile(events[eventIndex]);
-                      } else {
-                        return _buildEventTile(events[index]);
-                      }
+                      return _buildEventTile(events[index]);
                     },
                   );
                 },

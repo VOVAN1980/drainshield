@@ -3,13 +3,17 @@ import 'package:intl/intl.dart';
 import '../services/localization_service.dart';
 import '../services/portfolio_service.dart';
 import '../services/wc_service.dart';
+import '../services/wallet/wallet_registry_service.dart';
+import '../services/pro/pro_service.dart';
 import '../models/wallet_asset.dart';
+import '../models/linked_wallet.dart';
 import '../config/chains.dart';
 import '../config/app_colors.dart';
 import '../widgets/design/ds_fade_slide.dart';
 import '../widgets/design/ds_background.dart';
 import '../widgets/mascot_image.dart';
-import 'scan_screen.dart';
+import 'asset_detail_screen.dart';
+import 'pro_screen.dart';
 
 class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
@@ -20,10 +24,10 @@ class PortfolioScreen extends StatefulWidget {
 
 class _PortfolioScreenState extends State<PortfolioScreen> {
   final PortfolioService _portfolioService = PortfolioService();
+  final WalletRegistryService _registry = WalletRegistryService.instance;
   List<WalletAsset>? _assets;
   bool _isLoading = false;
   String? _error;
-  String _selectedChain = 'bsc';
   int _lastWalletChainId = 0;
 
   final List<Map<String, String>> _networks = [
@@ -40,19 +44,29 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     final wc = WcService();
     _lastWalletChainId = wc.currentChainId;
     _syncToWalletChain(); // Initial sync
+    
     wc.addListener(_onWalletUpdate);
+    _registry.addListener(_onRegistryUpdate);
     _fetchData();
   }
 
   @override
   void dispose() {
     WcService().removeListener(_onWalletUpdate);
+    _registry.removeListener(_onRegistryUpdate);
     super.dispose();
+  }
+
+  void _onRegistryUpdate() {
+    if (!mounted) return;
+    setState(() {});
+    _fetchData();
   }
 
   void _onWalletUpdate() {
     if (!mounted) return;
     final wc = WcService();
+    
     if (wc.currentChainId != _lastWalletChainId) {
       _lastWalletChainId = wc.currentChainId;
       _syncToWalletChain();
@@ -65,13 +79,13 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   void _syncToWalletChain() {
     final activeSlug = ChainConfig.getMoralisChainSlug(_lastWalletChainId);
     if (activeSlug != null) {
-      _selectedChain = activeSlug;
+      _registry.setSelectedChain(activeSlug);
     }
   }
 
   Future<void> _fetchData() async {
-    final wc = WcService();
-    if (!wc.isConnected) return;
+    final activeAddress = _registry.selectedAddress;
+    if (activeAddress.isEmpty) return;
 
     setState(() {
       _isLoading = true;
@@ -80,8 +94,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
     try {
       final assets = await _portfolioService.getPortfolio(
-        wc.address,
-        chainOverride: _selectedChain,
+        activeAddress,
+        chainOverride: _registry.selectedChain,
       );
       if (mounted) {
         setState(() {
@@ -134,17 +148,10 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   void _onAssetTap(WalletAsset asset, String walletAddress) {
-    if (asset.isNative) return;
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ScanScreen(
-          address: walletAddress,
-          targetTokenAddress: asset.address,
-          targetTokenName: asset.name,
-          targetTokenSymbol: asset.symbol,
-        ),
+        builder: (_) => AssetDetailScreen(asset: asset),
       ),
     );
   }
@@ -201,10 +208,11 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                 offset: const Offset(0, -45),
                 child: Column(
                   children: [
-                    if (!wc.isConnected)
+                    if (_registry.selectedAddress.isEmpty && !wc.isConnected)
                       Expanded(child: _buildDisconnectedState(loc, wc))
                     else ...[
-                      _buildNetworkSelector(loc),
+                      _buildMonitoringStatus(loc),
+                      _buildTopSelectors(loc),
                       const SizedBox(height: 16),
                       Expanded(
                         child: _isLoading
@@ -213,7 +221,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                                 ? _buildErrorState(loc)
                                 : (_assets == null || _assets!.isEmpty)
                                     ? _buildEmptyState(loc)
-                                    : _buildPortfolioContent(loc, wc.address),
+                                    : _buildPortfolioContent(loc, _registry.selectedAddress),
                       ),
                     ],
                   ],
@@ -226,49 +234,286 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     );
   }
 
-  Widget _buildNetworkSelector(LocalizationService loc) {
+  Widget _buildMonitoringStatus(LocalizationService loc) {
+    final activeCount = _registry.getMonitoringEligibleWallets().length;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        loc.t('portfolioMonitoringCount', {'count': activeCount}),
+        style: TextStyle(
+          color: const Color(0xFF00FF9D).withOpacity(0.7),
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopSelectors(LocalizationService loc) {
+    final activeAddress = _registry.selectedAddress;
+    final wallet = _registry.wallets.firstWhere(
+      (w) => w.address.toLowerCase() == activeAddress.toLowerCase(),
+      orElse: () => LinkedWallet(address: activeAddress, label: 'Wallet', addedAt: DateTime.now()),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          // Network Selector
+          _buildSelectorButton(
+            onTap: () => _showNetworkBottomSheet(loc),
+            icon: Icons.layers_outlined,
+            label: _getNetworkName(_registry.selectedChain, loc),
+            maxWidth: 110,
+          ),
+          const SizedBox(width: 8),
+          // Wallet Selector
+          _buildSelectorButton(
+            onTap: () => _handleWalletSwitchTap(loc),
+            icon: Icons.account_balance_wallet_outlined,
+            label: wallet.label,
+            subLabel: _formatAddress(activeAddress),
+            isLocked: !ProService.instance.isProActive(),
+            maxWidth: 130,
+          ),
+          // Space for future buttons
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectorButton({
+    required VoidCallback onTap,
+    required IconData icon,
+    required String label,
+    String? subLabel,
+    bool isLocked = false,
+    double? maxWidth,
+  }) {
     return Container(
-      height: 50,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _networks.length,
-        itemBuilder: (context, index) {
-          final network = _networks[index];
-          final isSelected = _selectedChain == network['id'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(
-                _getNetworkName(network['id']!, loc),
-                style: TextStyle(
-                  color: isSelected ? Colors.black : AppColors.secondaryText,
+      constraints: maxWidth != null ? BoxConstraints(maxWidth: maxWidth) : null,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: isLocked ? Colors.white24 : const Color(0xFF00FF9D)),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                     Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (subLabel != null)
+                      Text(
+                        subLabel,
+                        style: const TextStyle(
+                          color: AppColors.tertiaryText,
+                          fontSize: 9,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                isLocked ? Icons.lock_outline : Icons.keyboard_arrow_down,
+                size: 14,
+                color: Colors.white38,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showNetworkBottomSheet(LocalizationService loc) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161B22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                loc.t('portfolioSelectNetwork'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
                 ),
               ),
-              selected: isSelected,
-              onSelected: (selected) {
-                if (selected && _selectedChain != network['id']) {
-                  setState(() {
-                    _selectedChain = network['id']!;
-                  });
-                  _fetchData();
-                }
-              },
-              selectedColor: const Color(0xFF00FF9D),
-              backgroundColor: Colors.white.withOpacity(0.05),
-              showCheckmark: false,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: isSelected ? const Color(0xFF00FF9D) : Colors.white12,
+              const SizedBox(height: 16),
+              ..._networks.map((network) {
+                final isSelected = _registry.selectedChain == network['id'];
+                return ListTile(
+                  leading: Icon(
+                    Icons.layers_outlined,
+                    color: isSelected ? const Color(0xFF00FF9D) : Colors.white24,
+                  ),
+                  title: Text(
+                    _getNetworkName(network['id']!, loc),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : AppColors.secondaryText,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  trailing: isSelected ? const Icon(Icons.check, color: Color(0xFF00FF9D)) : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (!isSelected) {
+                      _registry.setSelectedChain(network['id']!);
+                      _fetchData();
+                    }
+                  },
+                );
+              }),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleWalletSwitchTap(LocalizationService loc) {
+    if (ProService.instance.isProActive()) {
+      _showWalletBottomSheet(loc);
+    } else {
+      _showProPaywall(loc);
+    }
+  }
+
+  void _showWalletBottomSheet(LocalizationService loc) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161B22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final wallets = _registry.wallets;
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                loc.t('portfolioSwitchWallet'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 16),
+              if (wallets.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    loc.t('linkedWalletsEmpty'),
+                    style: const TextStyle(color: AppColors.tertiaryText),
+                  ),
+                ),
+              ...wallets.map((wallet) {
+                final isSelected = _registry.selectedAddress.toLowerCase() == wallet.address.toLowerCase();
+                return ListTile(
+                  leading: Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: isSelected ? const Color(0xFF00FF9D) : Colors.white24,
+                  ),
+                  title: Text(
+                    wallet.label,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : AppColors.secondaryText,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _formatAddress(wallet.address),
+                    style: const TextStyle(fontSize: 10, color: AppColors.tertiaryText),
+                  ),
+                  trailing: isSelected ? const Icon(Icons.check, color: Color(0xFF00FF9D)) : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (!isSelected) {
+                      _registry.setSelectedAddress(wallet.address);
+                    }
+                  },
+                );
+              }),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showProPaywall(LocalizationService loc) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          loc.t('portfolioProSwitchTitle'),
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          loc.t('portfolioProSwitchSub'),
+          style: const TextStyle(color: AppColors.secondaryText),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(loc.t('scanResCancelCapitalize'), style: const TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              foregroundColor: Colors.black,
             ),
-          );
-        },
+            child: Text(loc.t('proUpgradeBtn')),
+          ),
+        ],
       ),
     );
   }
@@ -369,7 +614,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           const SizedBox(height: 16),
           Text(
             loc.t('portfolioNoAssets', {
-              'network': _getNetworkName(_selectedChain, loc),
+              'network': _getNetworkName(_registry.selectedChain, loc),
             }),
             style: const TextStyle(color: AppColors.tertiaryText),
           ),
@@ -474,7 +719,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                     border: Border.all(color: Colors.white12),
                   ),
                   child: Text(
-                    _getNetworkName(_selectedChain, loc),
+                    _getNetworkName(_registry.selectedChain, loc),
                     style: const TextStyle(
                       color: Color(0xFF00FF9D),
                       fontSize: 10,
@@ -567,12 +812,11 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                         fontSize: 15,
                       ),
                     ),
-                    if (!asset.isNative)
-                      const Icon(
-                        Icons.chevron_right,
-                        size: 16,
-                        color: Colors.white24,
-                      ),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: Colors.white24,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),

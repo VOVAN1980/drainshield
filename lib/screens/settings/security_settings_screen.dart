@@ -6,12 +6,13 @@ import '../../services/security/system_health_service.dart';
 import '../../services/pro/pro_service.dart';
 import '../../services/threat_intelligence_service.dart';
 import '../../services/security/monitoring_state_service.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'package:intl/intl.dart';
 import 'linked_wallets_screen.dart';
 import '../pro_screen.dart';
 import '../security_events_screen.dart';
 import '../../widgets/design/ds_background.dart';
+import 'package:app_settings/app_settings.dart';
 import '../../config/app_colors.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
@@ -98,48 +99,37 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                       ListenableBuilder(
                         listenable: ProService.instance,
                         builder: (context, _) {
-                          final isPro = ProService.instance.isProActive();
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildMonitoringAction(
-                                  loc, settings.autoMonitoringEnabled, isPro),
-                              if (isPro) ...[
-                                const SizedBox(height: 24),
-                                _buildToggle(
-                                  loc.t('settingsSecurityAutoMonitoring'),
-                                  settings.autoMonitoringEnabled,
-                                  (val) {
-                                    SettingsService.instance
-                                        .updateMonitoringSettings(
-                                      autoMonitoringEnabled: val,
-                                    );
-                                    if (val) _runMonitoring();
-                                  },
-                                  isPro: isPro,
-                                ),
-                                _buildIntervalSelector(
-                                  loc.t('settingsSecurityInterval'),
-                                  settings.monitoringIntervalMinutes,
-                                  [1, 5, 10, 30, 60],
-                                  (val) => SettingsService.instance
+                                  loc, settings.autoMonitoringEnabled, true),
+                              const SizedBox(height: 24),
+                              _buildToggle(
+                                loc.t('settingsSecurityAutoMonitoring'),
+                                settings.autoMonitoringEnabled,
+                                (val) {
+                                  SettingsService.instance
                                       .updateMonitoringSettings(
-                                    monitoringIntervalMinutes: val,
-                                  ),
+                                    autoMonitoringEnabled: val,
+                                  );
+                                  if (val) _runMonitoring();
+                                },
+                                isPro: true,
+                              ),
+                              _buildIntervalSelector(
+                                loc.t('settingsSecurityInterval'),
+                                settings.monitoringIntervalMinutes,
+                                [15, 30, 60, 120, 240],
+                                (val) => SettingsService.instance
+                                    .updateMonitoringSettings(
+                                  monitoringIntervalMinutes: val,
                                 ),
-                                const SizedBox(height: 16),
-                                _buildBatteryOptimizationGuidance(loc),
-                              ] else ...[
-                                const SizedBox(height: 24),
-                                _buildToggle(
-                                  loc.t('settingsSecurityAutoMonitoring'),
-                                  false,
-                                  null,
-                                  isPro: false,
-                                  subtitle: loc
-                                      .t('settingsSecurityProMonitoringHint'),
-                                ),
-                              ],
+                                subtitle:
+                                    loc.t('settingsSecurityIntervalMinHint'),
+                              ),
+                              const SizedBox(height: 16),
+                              _buildBatteryOptimizationGuidance(loc),
                             ],
                           );
                         },
@@ -543,46 +533,66 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     String title,
     int currentVal,
     List<int> options,
-    ValueChanged<int>? onChanged,
-  ) {
+    ValueChanged<int>? onChanged, {
+    String? subtitle,
+  }) {
     final bool isEnabled = onChanged != null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButtonFormField<int>(
-            value: options.contains(currentVal) ? currentVal : options.first,
-            items: options
-                .map(
-                  (e) => DropdownMenuItem(
-                    value: e,
-                    child: Text(
-                      "$e min",
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                )
-                .toList(),
-            onChanged:
-                isEnabled ? (val) => val != null ? onChanged(val) : null : null,
-            decoration: InputDecoration(
-              labelText: title,
-              labelStyle: TextStyle(
-                  color: isEnabled
-                      ? AppColors.tertiaryText
-                      : AppColors.tertiaryText.withOpacity(0.5)),
-              border: InputBorder.none,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownButtonHideUnderline(
+              child: DropdownButtonFormField<int>(
+                value:
+                    options.contains(currentVal) ? currentVal : options.first,
+                items: options
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(
+                          "$e min",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: isEnabled
+                    ? (val) => val != null ? onChanged(val) : null
+                    : null,
+                decoration: InputDecoration(
+                  labelText: title,
+                  labelStyle: TextStyle(
+                      color: isEnabled
+                          ? AppColors.tertiaryText
+                          : AppColors.tertiaryText.withOpacity(0.5)),
+                  border: InputBorder.none,
+                ),
+                dropdownColor: const Color(0xFF030509),
+                icon: Icon(Icons.keyboard_arrow_down,
+                    color: Colors.white.withOpacity(0.72)),
+              ),
             ),
-            dropdownColor: const Color(0xFF030509),
-            icon: Icon(Icons.keyboard_arrow_down,
-                color: Colors.white.withOpacity(0.72)),
-          ),
+            if (subtitle != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 4),
+                child: Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -739,20 +749,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                // Open App Settings as a reliable fallback for battery optimization
-                // Better yet, just open general settings or app info
-                // For this implementation, we'll try to open app settings
                 try {
-                  // Common android intent for app settings
-                  // We'll use a generic approach if possible, or just a mock/link for now
-                  // since we don't have the package name dynamically here easily
-                  // but we know it's likely something like 'com.drainshield.app'
-                  // Let's use a safe fallback: open settings
-                  await launchUrl(Uri.parse('package:com.drainshield.app'),
-                      mode: LaunchMode.externalApplication);
+                  await AppSettings.openAppSettings(
+                    type: AppSettingsType.batteryOptimization,
+                  );
                 } catch (e) {
-                  // If fails, try generic settings
-                  // await launchUrl(Uri.parse('package:android.settings.SETTINGS'));
+                  // Fallback to general app settings
+                  await AppSettings.openAppSettings();
                 }
               },
               style: ElevatedButton.styleFrom(

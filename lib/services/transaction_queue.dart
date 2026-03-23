@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../models/approval.dart';
 import '../models/gas_estimation_result.dart';
 import 'revoke_service.dart';
@@ -181,7 +182,7 @@ class TransactionQueue {
         successCount++;
       } catch (e) {
         // Ignore failures for individual estimates to not break the flow
-        print("Failed to estimate gas for ${a.token}: $e");
+        debugPrint("Failed to estimate gas for ${a.token}: $e");
       }
     }
 

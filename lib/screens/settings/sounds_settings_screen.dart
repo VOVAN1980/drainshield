@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/settings/settings_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/alerts/sound_service.dart';
+import '../../services/alerts/notification_service.dart';
 import '../../widgets/design/ds_background.dart';
 import '../../models/sound_settings.dart';
 
@@ -13,6 +14,19 @@ class SoundsSettingsScreen extends StatefulWidget {
 }
 
 class _SoundsSettingsScreenState extends State<SoundsSettingsScreen> {
+  bool _isPermissionGranted = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermission();
+  }
+
+  Future<void> _checkPermission() async {
+    final granted = await NotificationService.instance.isPermissionGranted();
+    if (mounted) setState(() => _isPermissionGranted = granted);
+  }
+
   @override
   void dispose() {
     SoundService.instance.stopAll();
@@ -41,6 +55,7 @@ class _SoundsSettingsScreenState extends State<SoundsSettingsScreen> {
                       vertical: 8,
                     ),
                     children: [
+                      if (!_isPermissionGranted) _buildPermissionWarning(loc),
                       // SECTION: MAIN
                       _buildSectionHeader(loc.t('settingsSoundSectionMain')),
                       _buildToggle(
@@ -129,10 +144,99 @@ class _SoundsSettingsScreenState extends State<SoundsSettingsScreen> {
                           settings.selectedPanicSoundId,
                         ),
                       ),
+                      const SizedBox(height: 16),
+
+                      // SECTION: TESTING
+                      _buildSectionHeader(loc.t('settingsSoundSectionTesting')),
+                      _buildTestButton(
+                        context,
+                        loc.t('settingsSoundTestAudio'),
+                        Icons.audiotrack,
+                        () => SoundService.instance.previewCriticalSound(
+                          settings.selectedCriticalSoundId,
+                        ),
+                      ),
+                      _buildTestButton(
+                        context,
+                        loc.t('settingsSoundTestNotification'),
+                        Icons.notification_important,
+                        () {
+                          // Stop any current sound to avoid overlap
+                          SoundService.instance.stopAll();
+                          // Show system notification
+                          NotificationService.instance.showCriticalAlert(
+                            loc.t('testNotificationTitle'),
+                            loc.t('testNotificationBody'),
+                          );
+                        },
+                      ),
+                      _buildTestButton(
+                        context,
+                        loc.t('settingsSoundTestVibration'),
+                        Icons.vibration,
+                        () => SoundService.instance.stopAll().then((_) {
+                          // Just a short vibe check
+                          SoundService.instance.previewAlertSound(
+                            settings.selectedAlertSoundId,
+                          );
+                        }),
+                      ),
                       const SizedBox(height: 32),
                     ],
                   );
                 },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionWarning(LocalizationService loc) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF4B4B).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFF4B4B).withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: Color(0xFFFF4B4B), size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    loc.t('settingsNotificationPermissionDenied'),
+                    style: const TextStyle(
+                      color: Color(0xFFFF4B4B),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => NotificationService.instance.init().then((_) {
+                  _checkPermission();
+                }),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF4B4B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(loc.t('settingsNotificationPermissionEnableBtn')),
               ),
             ),
           ],
@@ -267,6 +371,50 @@ class _SoundsSettingsScreenState extends State<SoundsSettingsScreen> {
               tooltip: loc.t('preview'), // Optional, will failback if missing
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTestButton(
+    BuildContext context,
+    String title,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: const Color(0xFF00FF9D), size: 24),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.white24,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
