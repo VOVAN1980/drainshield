@@ -88,6 +88,85 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
   void initState() {
     super.initState();
     _fetchLocale();
+    _checkForUpdates();
+  }
+
+  Future<void> _checkForUpdates() async {
+    // Wait for the first frame to ensure Navigator is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final result = await UpdateService.instance.checkForUpdates(isAutoCheck: true);
+      if (result.status == UpdateStatus.updateAvailable && mounted) {
+        _showUpdateDialog(result);
+      }
+    });
+  }
+
+  void _showUpdateDialog(UpdateCheckResult result) {
+    final t = LocalizationService.instance;
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1117),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.blue.withOpacity(0.3), width: 1),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.system_update, color: Colors.blue),
+            const SizedBox(width: 12),
+            Text(
+              t.t('settingsUpdateTitle').toUpperCase(),
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.t('settingsUpdateNewMsg', {'version': result.latestVersion ?? ''}),
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              t.t('settingsAboutVersion', {'version': result.currentVersion ?? ''}),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              t.t('settingsUpdateActionLater').toUpperCase(),
+              style: TextStyle(color: Colors.white.withOpacity(0.6), fontWeight: FontWeight.bold),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              UpdateService.instance.launchStore(customUrl: result.updateUrl);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.withOpacity(0.2),
+              foregroundColor: Colors.blue,
+              side: BorderSide(color: Colors.blue.withOpacity(0.5)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              t.t('settingsUpdateActionUpdate').toUpperCase(),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _fetchLocale() async {
