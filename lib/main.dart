@@ -1,16 +1,53 @@
 import "package:flutter/material.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_localizations/flutter_localizations.dart";
+import "package:flutter/services.dart";
 import "package:shared_preferences/shared_preferences.dart";
 import "package:reown_appkit/reown_appkit.dart";
 import "services/localization_service.dart";
 import "services/spender_intelligence_service.dart";
+import "services/update_service.dart";
 import "screens/boot_screen.dart";
+import "screens/settings/update_screen.dart";
+import "package:workmanager/workmanager.dart";
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      // Initialize what's needed for the background task
+      // Note: background tasks are isolated, so services need to be ready
+      await UpdateService.instance.initBackground();
+      return Future.value(true);
+    } catch (e) {
+      debugPrint('[Workmanager] Task failed: $e');
+      return Future.value(false);
+    }
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  // Initialize Workmanager
+  await Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: kDebugMode,
+  );
+
+  // Register the daily update check task
+  await Workmanager().registerPeriodicTask(
+    "1", 
+    "app_update_check",
+    frequency: const Duration(hours: 24),
+    initialDelay: const Duration(minutes: 5), // Wait a bit after 1st install
+    constraints: Constraints(
+      networkType: NetworkType.connected,
+    ),
+  );
 
   // Basic production-safe error capture
   FlutterError.onError = (details) {
@@ -152,6 +189,9 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
           );
         },
         home: const BootScreen(),
+        routes: {
+          '/update': (context) => const UpdateScreen(),
+        },
       ),
     );
   }

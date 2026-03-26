@@ -403,5 +403,14 @@
   "assetTypeNative": "Native Asset",
   "assetTypeERC20": "ERC20 Token",
   "assetAddress": "Contract Address",
-  "assetCopySuccess": "Address copied"
+  "assetCopySuccess": "Address copied",
+  "proLimitHint": "PRO allows up to 5 wallets",
+  "scanNoData": "No data found",
+  "scanFailed": "Scan failed",
+  "settingsUpdateTitle": "Software Update",
+  "settingsUpdateCheckBtn": "CHECK",
+  "settingsUpdateLatestMsg": "Up to date",
+  "settingsUpdateNewMsg": "New version: {version}",
+  "settingsUpdateActionUpdate": "UPDATE",
+  "settingsUpdateActionLater": "LATER"
 }
