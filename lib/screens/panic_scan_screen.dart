@@ -7,15 +7,23 @@ import '../services/transaction_queue.dart';
 import '../services/risk_engine.dart';
 import '../widgets/design/ds_background.dart';
 import '../widgets/design/ds_scanning_flow.dart';
-import '../widgets/top_nav.dart';
 import '../services/localization_service.dart';
 import '../widgets/design/ds_hazard_stripes.dart';
 import '../services/security/security_event_service.dart';
 import '../models/security_event.dart';
+import '../services/pro/pro_service.dart';
+import '../services/approval_scan_service.dart';
+import '../models/linked_wallet.dart';
+import 'pro_screen.dart';
 
 class PanicScanScreen extends StatefulWidget {
   final String address;
-  const PanicScanScreen({super.key, required this.address});
+  final List<LinkedWallet> wallets;
+  const PanicScanScreen({
+    super.key,
+    required this.address,
+    this.wallets = const [],
+  });
 
   @override
   State<PanicScanScreen> createState() => _PanicScanScreenState();
@@ -40,7 +48,7 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
   int _revokeFailed = 0;
   String _revokeStatusText = "";
   StreamSubscription? _queueSub;
-
+  bool _isScanning = true;
   List<String> _getScanSteps(LocalizationService loc) {
     return [
       loc.t('panicScanStep1'),
@@ -55,7 +63,7 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
   @override
   void initState() {
     super.initState();
-    _startScan();
+    _runScan();
   }
 
   @override
@@ -64,17 +72,62 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
     super.dispose();
   }
 
-  Future<void> _startScan() async {
+  Future<void> _runScan() async {
+    _isScanning = true;
+    _scanProgress = 0.0;
+    final startTime = DateTime.now();
+    debugPrint('[PanicScan] ▶ START | wallets=${widget.wallets.length} | fallback=${widget.address.substring(0, 8)}...');
     _simulateScanProgress();
 
     try {
       _errorMessage = null;
-      _allApprovals = await GlobalApprovalScanner.scanAllApprovals(
-        widget.address,
-      );
+
+      // Multi-chain scan: if wallets provided, scan each by chainType
+      if (widget.wallets.isNotEmpty) {
+        final allResults = <ApprovalData>[];
+
+        for (final wallet in widget.wallets) {
+          final walletStart = DateTime.now();
+          debugPrint('[PanicScan] 🔍 Scanning ${wallet.chainType}/${wallet.address.substring(0, 8)}...');
+          try {
+            List<ApprovalData> results;
+            if (wallet.chainType == 'evm') {
+              // EVM gets the full enrichment pipeline
+              results = await GlobalApprovalScanner.scanAllApprovals(
+                wallet.address,
+              );
+            } else {
+              // Solana/Tron use ApprovalScanService routing
+              results = await ApprovalScanService.scan(
+                wallet.address,
+                chainType: wallet.chainType,
+              );
+            }
+            final walletMs = DateTime.now().difference(walletStart).inMilliseconds;
+            debugPrint('[PanicScan] ✅ ${wallet.chainType} done in ${walletMs}ms | found=${results.length}');
+            allResults.addAll(results);
+          } catch (e) {
+            final walletMs = DateTime.now().difference(walletStart).inMilliseconds;
+            debugPrint('[PanicScan] ❌ ${wallet.chainType} FAILED in ${walletMs}ms | $e');
+            // Continue scanning other wallets
+          }
+        }
+
+        _allApprovals = allResults;
+      } else {
+        // Fallback: single-address EVM scan (backward compat)
+        debugPrint('[PanicScan] 🔍 Fallback EVM scan...');
+        _allApprovals = await GlobalApprovalScanner.scanAllApprovals(
+          widget.address,
+        );
+      }
+
+      final scanMs = DateTime.now().difference(startTime).inMilliseconds;
+      debugPrint('[PanicScan] 📊 All scans done in ${scanMs}ms | total=${_allApprovals.length} approvals');
 
       _riskyApprovals =
           _allApprovals.where((a) => a.assessment.shouldRevoke).toList();
+      debugPrint('[PanicScan] ⚠️ Risky=${_riskyApprovals.length} / Total=${_allApprovals.length}');
 
       // Sort by risk score (descending) so critical items are handled first
       // Priority sorting: 1. Threat hits, 2. Score descending
@@ -88,18 +141,45 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
       });
 
       if (_riskyApprovals.isNotEmpty) {
-        final queue = TransactionQueue();
-        try {
-          _gasEstimate = await queue.estimateTotalGas(_riskyApprovals);
-        } catch (_) {}
+        // Gas estimation only for EVM approvals
+        final evmRisky =
+            _riskyApprovals.where((a) => a.chainType == 'evm').toList();
+        if (evmRisky.isNotEmpty) {
+          debugPrint('[PanicScan] ⛽ Estimating gas for ${evmRisky.length} EVM revokes...');
+          final queue = TransactionQueue();
+          try {
+            _gasEstimate = await queue.estimateTotalGas(evmRisky);
+            debugPrint('[PanicScan] ⛽ Gas estimate ready');
+          } catch (_) {
+            debugPrint('[PanicScan] ⛽ Gas estimation failed');
+          }
+        }
       }
     } catch (e) {
-      debugPrint("Panic scan failed: $e");
+      debugPrint('[PanicScan] ❌ FATAL: $e');
       _errorMessage = e is String ? e : e.toString();
     }
 
-    while (_scanProgress < 1.0) {
-      await Future.delayed(const Duration(milliseconds: 100));
+    // Ensure Panic scan animation runs for at least 8 seconds
+    final elapsed = DateTime.now().difference(startTime);
+    const minDuration = Duration(seconds: 8);
+    if (elapsed < minDuration) {
+      final padMs = (minDuration - elapsed).inMilliseconds;
+      debugPrint('[PanicScan] ⏳ Padding ${padMs}ms to reach min 8s display');
+      await Future.delayed(minDuration - elapsed);
+    }
+
+    _isScanning = false;
+    final totalMs = DateTime.now().difference(startTime).inMilliseconds;
+    debugPrint('[PanicScan] ⏹ Progress bar → 100% | total=${totalMs}ms');
+
+    if (mounted) {
+      setState(() {
+        _scanProgress = 1.0;
+        _scanStepAction =
+            _getScanSteps(LocalizationService.instance).length - 1;
+      });
+      await Future.delayed(const Duration(milliseconds: 300));
     }
 
     if (!mounted) return;
@@ -155,32 +235,34 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
         ],
       ),
     );
-    if (confirm == true) _startRevoke();
+    if (confirm == true) {
+      if (!ProService.instance.canUseBulkRevoke()) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProScreen()),
+          );
+        }
+        return;
+      }
+      _startRevoke();
+    }
   }
 
   Future<void> _simulateScanProgress() async {
     final int totalSteps = _getScanSteps(LocalizationService.instance).length;
-    const int delayPerStepMs = 800;
-    const int updatesPerStep = 20;
 
-    for (int i = 0; i < totalSteps; i++) {
-      if (!mounted) return;
-      setState(() => _scanStepAction = i);
+    while (_isScanning && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (!_isScanning || !mounted) break;
 
-      for (int k = 0; k < updatesPerStep; k++) {
-        await Future.delayed(
-          const Duration(milliseconds: delayPerStepMs ~/ updatesPerStep),
-        );
-        if (!mounted) return;
-        setState(() {
-          _scanProgress = (i + (k + 1) / updatesPerStep) / totalSteps;
-        });
-      }
-    }
-    if (mounted) {
       setState(() {
-        _scanStepAction = totalSteps;
-        _scanProgress = 1.0;
+        // Asymptotic curve: approaches 99% but never stops moving
+        _scanProgress += (0.99 - _scanProgress) * 0.05;
+
+        // Update text steps based on progress
+        _scanStepAction =
+            (_scanProgress * totalSteps).floor().clamp(0, totalSteps - 1);
       });
     }
   }
@@ -219,7 +301,11 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
 
     try {
       queue.addJobs(_riskyApprovals);
-      await queue.run(emitEvents: false);
+      final result = await queue.run(emitEvents: false);
+
+      // Update counts from actual result, not from stream
+      _revokeSuccess = result.successCount;
+      _revokeFailed = result.failedCount;
     } catch (e) {
       debugPrint("Panic revoke failed: $e");
     } finally {
@@ -237,9 +323,8 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
               severity: 'high',
               timestamp: DateTime.now(),
               walletAddress: widget.address,
-              title: 'Panic Mode Completed',
-              message:
-                  'Emergency revoke completed for $_revokeSuccess approvals.',
+              title: loc.t('panicCompleteTitle'),
+              message: loc.t('panicSuccess', {'count': _revokeSuccess}),
               metadata: {
                 'successCount': _revokeSuccess,
                 'failedCount': _revokeFailed,
@@ -430,6 +515,35 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
                                 color: Colors.redAccent,
                               ),
                               const SizedBox(width: 8),
+                              // Chain badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 1,
+                                ),
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  a.chainType == 'solana'
+                                      ? 'SOL'
+                                      : a.chainType == 'tron'
+                                          ? 'TRX'
+                                          : 'EVM',
+                                  style: TextStyle(
+                                    color: a.chainType == 'solana'
+                                        ? const Color(0xFF9945FF)
+                                        : a.chainType == 'tron'
+                                            ? Colors.red
+                                            : Colors.cyanAccent,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
                               Text(
                                 sym,
                                 style: const TextStyle(
@@ -631,9 +745,9 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              "Emergency scan failed",
-              style: TextStyle(
+            Text(
+              loc.t('scanFailed'),
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
@@ -642,7 +756,7 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              _errorMessage ?? "Unable to perform emergency scan",
+              _errorMessage ?? loc.t('scanNoData'),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white70,
@@ -662,7 +776,7 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
                     _scanProgress = 0;
                     _scanStepAction = 0;
                   });
-                  _startScan();
+                  _runScan();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFEF4444),
@@ -671,9 +785,9 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Text(
-                  "Retry",
-                  style: TextStyle(
+                child: Text(
+                  loc.t('portfolioRetry'),
+                  style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 15,
                     letterSpacing: 1,
@@ -728,7 +842,11 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: const TopNav(),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: DsBackground(
         accentColor: const Color(0xFFEF4444),
         child: _buildContent(loc),

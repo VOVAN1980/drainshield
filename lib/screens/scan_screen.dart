@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/localization_service.dart';
-import '../widgets/top_nav.dart';
 import '../widgets/design/ds_background.dart';
 import '../config/app_colors.dart';
 import '../widgets/design/ds_scanning_flow.dart';
@@ -21,6 +20,7 @@ class ScanScreen extends StatefulWidget {
   final String? targetTokenSymbol;
   final String? highlightSpender;
   final String? highlightToken;
+  final String chainType; // 'evm', 'solana', 'tron'
 
   const ScanScreen({
     super.key,
@@ -31,6 +31,7 @@ class ScanScreen extends StatefulWidget {
     this.targetTokenSymbol,
     this.highlightSpender,
     this.highlightToken,
+    this.chainType = 'evm',
   });
 
   @override
@@ -44,6 +45,7 @@ class _ScanScreenState extends State<ScanScreen> {
   double _progress = 0.0;
   _ScanState _state = _ScanState.scanning;
   String? _errorMessage;
+  bool _isScanning = true;
 
   // Make Safe specific scan steps
   List<String> _getScanSteps(LocalizationService loc) {
@@ -61,6 +63,10 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> _runScan() async {
+    _isScanning = true;
+    _progress = 0.0;
+    final startTime = DateTime.now();
+    debugPrint('[ScanScreen] ▶ START scan | chain=${widget.chainType} | addr=${widget.address.substring(0, 8)}...');
     // Fire visual animation in parallel – does not block the real fetch.
     _simulateProgress();
 
@@ -72,15 +78,37 @@ class _ScanScreenState extends State<ScanScreen> {
         widget.address,
         targetTokenAddress: widget.targetTokenAddress,
         chainId: widget.chainId,
+        chainType: widget.chainType,
       );
+      final networkMs = DateTime.now().difference(startTime).inMilliseconds;
+      debugPrint('[ScanScreen] ✅ Network done in ${networkMs}ms | found=${list.length} approvals');
     } catch (e) {
+      final networkMs = DateTime.now().difference(startTime).inMilliseconds;
+      debugPrint('[ScanScreen] ❌ Scan FAILED in ${networkMs}ms | error=$e');
       _errorMessage = e is String ? e : e.toString();
       list = null;
     }
 
-    // Wait for animation to finish before transitioning.
-    while (_progress < 1.0) {
-      await Future.delayed(const Duration(milliseconds: 100));
+    // Ensure the scan animation runs for at least 5 seconds
+    // so it doesn't feel rushed to the user.
+    final elapsed = DateTime.now().difference(startTime);
+    const minDuration = Duration(seconds: 5);
+    if (elapsed < minDuration) {
+      final padMs = (minDuration - elapsed).inMilliseconds;
+      debugPrint('[ScanScreen] ⏳ Padding ${padMs}ms to reach min 5s display');
+      await Future.delayed(minDuration - elapsed);
+    }
+
+    _isScanning = false;
+    final totalMs = DateTime.now().difference(startTime).inMilliseconds;
+    debugPrint('[ScanScreen] ⏹ Progress bar → 100% | total=${totalMs}ms');
+
+    if (mounted) {
+      setState(() {
+        _progress = 1.0;
+        _currentStep = _getScanSteps(LocalizationService.instance).length - 1;
+      });
+      await Future.delayed(const Duration(milliseconds: 300));
     }
     if (!mounted) return;
 
@@ -101,6 +129,7 @@ class _ScanScreenState extends State<ScanScreen> {
             highlightSpender: widget.highlightSpender,
             highlightToken: widget.highlightToken,
             initialApprovals: list!,
+            chainType: widget.chainType,
           ),
         ),
       );
@@ -110,26 +139,17 @@ class _ScanScreenState extends State<ScanScreen> {
   Future<void> _simulateProgress() async {
     final loc = LocalizationService.instance;
     final int total = _getScanSteps(loc).length;
-    const int delayPerStepMs = 550;
-    const int updatesPerStep = 10;
 
-    for (int i = 0; i < total; i++) {
-      if (!mounted) return;
-      setState(() => _currentStep = i);
-      for (int k = 0; k < updatesPerStep; k++) {
-        await Future.delayed(
-          const Duration(milliseconds: delayPerStepMs ~/ updatesPerStep),
-        );
-        if (!mounted) return;
-        setState(() {
-          _progress = (i + (k + 1) / updatesPerStep) / total;
-        });
-      }
-    }
-    if (mounted) {
+    while (_isScanning && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (!_isScanning || !mounted) break;
+
       setState(() {
-        _currentStep = total;
-        _progress = 1.0;
+        // Asymptotic curve: quickly approaches 99% but never stops moving
+        _progress += (0.99 - _progress) * 0.05;
+
+        // Update text step based on progress
+        _currentStep = (_progress * total).floor().clamp(0, total - 1);
       });
     }
   }
@@ -140,7 +160,11 @@ class _ScanScreenState extends State<ScanScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: const TopNav(),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: DsBackground(
         accentColor: _state == _ScanState.error
             ? Colors.orange

@@ -20,7 +20,8 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _labelController = TextEditingController();
   bool _isProcessingPrimary = false;
-  bool _isWaitingForNewSession = false; // Guard: ignore events until WC modal is open
+  bool _isWaitingForNewSession =
+      false; // Guard: ignore events until WC modal is open
   Timer? _primaryTimeoutTimer;
   void Function()? _wcListener;
 
@@ -28,11 +29,11 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
   void dispose() {
     _addressController.dispose();
     _labelController.dispose();
-    _cleanupPrimaryFlow();
+    _cleanupPrimaryFlow(updateUi: false); // Never setState during dispose
     super.dispose();
   }
 
-  void _cleanupPrimaryFlow() {
+  void _cleanupPrimaryFlow({bool updateUi = true}) {
     _primaryTimeoutTimer?.cancel();
     _primaryTimeoutTimer = null;
     final listener = _wcListener;
@@ -40,7 +41,7 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
       WcService().removeListener(listener);
       _wcListener = null;
     }
-    if (mounted) {
+    if (updateUi && mounted) {
       setState(() => _isProcessingPrimary = false);
     }
   }
@@ -55,11 +56,17 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF0D1117),
-        title: Text(loc.t('linkedWalletsConfirmPrimaryTitle'), style: const TextStyle(color: Colors.white)),
-        content: Text(loc.t('linkedWalletsConfirmPrimaryMessage'), style: const TextStyle(color: AppColors.secondaryText)),
+        title: Text(loc.t('linkedWalletsConfirmPrimaryTitle'),
+            style: const TextStyle(color: Colors.white)),
+        content: Text(loc.t('linkedWalletsConfirmPrimaryMessage'),
+            style: const TextStyle(color: AppColors.secondaryText)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(loc.t('panicCancel'))),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(loc.t('panicConfirm'))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(loc.t('panicCancel'))),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(loc.t('panicConfirm'))),
         ],
       ),
     );
@@ -76,7 +83,10 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
       await wc.disconnect();
       await Future.delayed(const Duration(milliseconds: 800));
     }
-    if (!mounted) { _cleanupPrimaryFlow(); return; }
+    if (!mounted) {
+      _cleanupPrimaryFlow();
+      return;
+    }
 
     // 3. Now mark that we're waiting for a NEW connection (ignores disconnect events)
     setState(() => _isWaitingForNewSession = true);
@@ -84,7 +94,9 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
     _primaryTimeoutTimer = Timer(const Duration(seconds: 90), () {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loc.t('linkedWalletsPrimaryChangeCancelled')), backgroundColor: Colors.orange),
+          SnackBar(
+              content: Text(loc.t('linkedWalletsPrimaryChangeCancelled')),
+              backgroundColor: Colors.orange),
         );
         _cleanupPrimaryFlow();
       }
@@ -105,7 +117,9 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
         registry.setSelectedAddress(targetWallet.address);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(loc.t('linkedWalletsPrimaryChangeSuccess')), backgroundColor: Colors.green),
+            SnackBar(
+                content: Text(loc.t('linkedWalletsPrimaryChangeSuccess')),
+                backgroundColor: Colors.green),
           );
         }
         _cleanupPrimaryFlow();
@@ -169,11 +183,14 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
     );
   }
 
-  void _showMismatchDialog(LocalizationService loc, String selected, LinkedWallet target) {
+  void _showMismatchDialog(
+      LocalizationService loc, String selected, LinkedWallet target) {
     final wc = WcService();
     final String guest = wc.guestName;
-    final String sShort = "${selected.substring(0, 6)}...${selected.substring(selected.length - 4)}";
-    final String tShort = "${target.address.substring(0, 6)}...${target.address.substring(target.address.length - 4)}";
+    final String sShort =
+        "${selected.substring(0, 6)}...${selected.substring(selected.length - 4)}";
+    final String tShort =
+        "${target.address.substring(0, 6)}...${target.address.substring(target.address.length - 4)}";
 
     showDialog(
       context: context,
@@ -181,9 +198,11 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF0D1117),
         title: Text(loc.t('linkedWalletsMismatchTitle'),
-            style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            style: const TextStyle(
+                color: Colors.redAccent, fontWeight: FontWeight.bold)),
         content: Text(
-          loc.t('linkedWalletsMismatchMessage', {'selected': sShort, 'target': tShort, 'guest': guest}),
+          loc.t('linkedWalletsMismatchMessage',
+              {'selected': sShort, 'target': tShort, 'guest': guest}),
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -341,21 +360,17 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                     builder: (context, _) {
                       final wallets = WalletRegistryService.instance.wallets;
                       final limit = ProService.instance.maxWallets();
-                      // final isPro = ProService.instance.isProActive();
+                      final isPro = ProService.instance.isProActive();
+                      final atLimit = wallets.length >= limit;
 
                       return Column(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 8),
-                            child: Text(
-                              loc.t('linkedWalletsEmptyGuidance'),
-                              style: const TextStyle(
-                                color: AppColors.tertiaryText,
-                                fontSize: 13,
-                              ),
+                          // PRO upgrade banner when free user hits 1-wallet limit
+                          if (!isPro && atLimit && wallets.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                              child: _buildProUpgradeCTA(loc),
                             ),
-                          ),
                           Padding(
                             padding: const EdgeInsets.all(24.0),
                             child: Row(
@@ -371,11 +386,14 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 16),
-                                if (wallets.length < limit)
+                                if (!atLimit)
                                   ElevatedButton.icon(
-                                    onPressed: _isProcessingPrimary ? null : _showAddWalletDialog,
+                                    onPressed: _isProcessingPrimary
+                                        ? null
+                                        : _showAddWalletDialog,
                                     icon: const Icon(Icons.add, size: 18),
-                                    label: Text(loc.t('linkedWalletsAddWallet')),
+                                    label:
+                                        Text(loc.t('linkedWalletsAddWallet')),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF00FF9D),
                                       foregroundColor: Colors.black,
@@ -395,7 +413,8 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                             child: wallets.isEmpty
                                 ? Center(
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Icon(
                                           Icons.account_balance_wallet_outlined,
@@ -603,72 +622,77 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      onTap: () =>
-                          Future.microtask(() => _showAddWalletDialog()),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.add,
-                              size: 18, color: Colors.white70),
-                          const SizedBox(width: 12),
-                          Text(
-                            loc.t('linkedWalletsAdd'),
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 14),
+                  itemBuilder: (context) {
+                    final canAdd =
+                        WalletRegistryService.instance.canAddMoreWallets();
+                    return [
+                      if (canAdd)
+                        PopupMenuItem(
+                          onTap: () =>
+                              Future.microtask(() => _showAddWalletDialog()),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.add,
+                                  size: 18, color: Colors.white70),
+                              const SizedBox(width: 12),
+                              Text(
+                                loc.t('linkedWalletsAdd'),
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 14),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    if (!wallet.isPrimary)
+                        ),
+                      if (!wallet.isPrimary)
+                        PopupMenuItem(
+                          onTap: () => _handleSetPrimary(wallet),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star_outline,
+                                  size: 18, color: Colors.white70),
+                              const SizedBox(width: 12),
+                              Text(
+                                loc.t('linkedWalletsSetPrimary'),
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ),
                       PopupMenuItem(
-                        onTap: () => _handleSetPrimary(wallet),
+                        onTap: () async {
+                          final wc = WcService();
+                          if (wc.isConnected &&
+                              wc.address.toLowerCase() ==
+                                  wallet.address.toLowerCase()) {
+                            await wc.disconnect();
+                          }
+
+                          final registry = WalletRegistryService.instance;
+                          final bool wasPrimary = wallet.isPrimary;
+
+                          await registry.removeWallet(wallet.address);
+
+                          if (wasPrimary && registry.wallets.isNotEmpty) {
+                            if (mounted) {
+                              _showSetNewPrimaryPrompt(loc);
+                            }
+                          }
+                        },
                         child: Row(
                           children: [
-                            const Icon(Icons.star_outline,
-                                size: 18, color: Colors.white70),
+                            const Icon(Icons.delete_outline,
+                                size: 18, color: Colors.redAccent),
                             const SizedBox(width: 12),
                             Text(
-                              loc.t('linkedWalletsSetPrimary'),
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 14),
+                              loc.t('linkedWalletsRemove'),
+                              style: const TextStyle(),
                             ),
                           ],
                         ),
                       ),
-                    PopupMenuItem(
-                      onTap: () async {
-                        final wc = WcService();
-                        if (wc.isConnected &&
-                            wc.address.toLowerCase() ==
-                                wallet.address.toLowerCase()) {
-                          await wc.disconnect();
-                        }
-                        
-                        final registry = WalletRegistryService.instance;
-                        final bool wasPrimary = wallet.isPrimary;
-                        
-                        await registry.removeWallet(wallet.address);
-
-                        if (wasPrimary && registry.wallets.isNotEmpty) {
-                          if (mounted) {
-                            _showSetNewPrimaryPrompt(loc);
-                          }
-                        }
-                      },
-                      child: Row(
-                        children: [
-                          const Icon(Icons.delete_outline,
-                              size: 18, color: Colors.redAccent),
-                          const SizedBox(width: 12),
-                          Text(
-                            loc.t('linkedWalletsRemove'),
-                            style: const TextStyle(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ];
+                  },
                 ),
               ],
             ),
@@ -678,61 +702,62 @@ class _LinkedWalletsScreenState extends State<LinkedWalletsScreen> {
     );
   }
 
-  Widget _buildRenewCTA(LocalizationService loc) {
+  /// Shown when a free user has reached the 1-wallet limit
+  Widget _buildProUpgradeCTA(LocalizationService loc) {
     return Container(
-      margin: const EdgeInsets.only(top: 8, bottom: 24),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.orange.withOpacity(0.15),
-            Colors.orange.withOpacity(0.05),
+            const Color(0xFF00FF9D).withOpacity(0.08),
+            const Color(0xFF00D4FF).withOpacity(0.04),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.withOpacity(0.2)),
+        border: Border.all(color: const Color(0xFF00FF9D).withOpacity(0.2)),
       ),
       child: Column(
         children: [
-          const Icon(Icons.security_update_warning,
-              color: Colors.orange, size: 32),
+          const Icon(Icons.workspace_premium,
+              color: Color(0xFF00FF9D), size: 32),
           const SizedBox(height: 12),
-          const Text(
-            "Security Monitoring Paused",
-            style: TextStyle(
+          Text(
+            loc.t('proMultiWalletTitle'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 15,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            "Your wallets are currently not being monitored because your PRO subscription is inactive. Renew now to reactivate 24/7 protection.",
+          Text(
+            loc.t('portfolioProSwitchSub'),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: AppColors.tertiaryText,
-              fontSize: 13,
+              fontSize: 12,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ProScreen()),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
+              backgroundColor: const Color(0xFF00FF9D),
               foregroundColor: Colors.black,
-              minimumSize: const Size(double.infinity, 48),
+              minimumSize: const Size(double.infinity, 44),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              "RENEW PRO SUBSCRIPTION",
-              style: TextStyle(fontWeight: FontWeight.bold),
+            child: Text(
+              loc.t('proUpgradeBtn'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ],

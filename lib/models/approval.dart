@@ -13,11 +13,14 @@ enum SpenderReputation {
 }
 
 class ApprovalData {
-  final int chainId; // 56
-  final String token; // token contract 0x...
+  final int chainId; // 56 for EVM, 0 for non-EVM
+  final String chainType; // 'evm', 'solana', 'tron'
+  final String token; // token contract 0x... / mint / T...
   final String? tokenName;
   final String? tokenSymbol;
-  final String spenderAddress; // spender 0x...
+  final String?
+      tokenAccountAddress; // Solana: SPL token account pubkey (required for revoke)
+  final String spenderAddress; // spender address (format varies by chain)
   final String spender; // label for UI
   BigInt allowance;
   final int decimals; // token decimals
@@ -45,9 +48,11 @@ class ApprovalData {
 
   ApprovalData({
     this.chainId = 56,
+    this.chainType = 'evm',
     required this.token,
     this.tokenName,
     this.tokenSymbol,
+    this.tokenAccountAddress,
     required this.spenderAddress,
     required this.spender,
     required this.allowance,

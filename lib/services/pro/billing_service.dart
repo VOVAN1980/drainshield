@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'pro_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum BillingStatus { loading, ready, error, processing }
 
 class BillingService extends ChangeNotifier {
+  static const String googlePlayPublicKey =
+      'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsy/PtQIb8PgqCm0PPNFaxQfHLH4hAQ0ZAtg4OOt2ZiE0xbksRMiJnDHovPTn2RnuQMO9TIPHwDJzhukev3W/ScEJfXuiTUyEVmuXbdcsIee+1j27tldl+vBE9TBDXq/brMnWwY6JLMtdtQAHf25y4MRl4VspH5jzGTvaczL7pu+0YZU1omSSwb+1GGEvu3+NnQxMwxeZw+QkLkmIETaYba4iv1ujZrtTfSMTnzzveJZdIyqlbOT0gpDOe/qiWZcPnrvJKh3XvNAxSuoWaR6f1seHAZXH7PsK/Mfvb+FoA89ILxVy5iZXxM3e3CytHvfjK9d8J481C1v6F5jq9qDBFQIDAQAB';
+
   static final BillingService instance = BillingService._();
   BillingService._();
 
@@ -21,17 +24,10 @@ class BillingService extends ChangeNotifier {
   final List<PurchaseDetails> _activePurchases = [];
   List<PurchaseDetails> get activePurchases => _activePurchases;
 
-  final Set<String> _productIds = {'pro_monthly', 'pro_yearly'};
+  final Set<String> _productIds = {'drainshield_pro'};
 
   Future<void> init() async {
-    debugPrint("[BillingService] Initializing (kIsWeb=$kIsWeb, review=${ProService.isReviewBuild})...");
-    
-    if (ProService.isReviewBuild) {
-      debugPrint("[BillingService] Review build detected, skipping billing init.");
-      _status = BillingStatus.ready;
-      notifyListeners();
-      return;
-    }
+    debugPrint("[BillingService] Initializing (kIsWeb=$kIsWeb)...");
 
     // Web does not support in_app_purchase usually, and it's a common hang point
     if (kIsWeb) {
@@ -73,7 +69,7 @@ class BillingService extends ChangeNotifier {
           debugPrint("[BillingService] loadProducts() timed out after 10s.");
         },
       );
-      
+
       debugPrint("[BillingService] Initialization complete.");
     } catch (e) {
       debugPrint("[BillingService] CRITICAL Error during init: $e");
@@ -93,10 +89,11 @@ class BillingService extends ChangeNotifier {
 
     try {
       final response = await _iap.queryProductDetails(_productIds).timeout(
-        const Duration(seconds: 7),
-      );
+            const Duration(seconds: 7),
+          );
       if (response.notFoundIDs.isNotEmpty) {
-        debugPrint("[BillingService] Products not found: ${response.notFoundIDs}");
+        debugPrint(
+            "[BillingService] Products not found: ${response.notFoundIDs}");
       }
       _products = response.productDetails;
       _status = BillingStatus.ready;
@@ -108,18 +105,10 @@ class BillingService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> buyMonthly() async {
+  Future<void> buyPro() async {
     final product = _products.firstWhere(
-      (p) => p.id == 'pro_monthly',
-      orElse: () => throw Exception("Monthly product not found"),
-    );
-    await _buy(product);
-  }
-
-  Future<void> buyYearly() async {
-    final product = _products.firstWhere(
-      (p) => p.id == 'pro_yearly',
-      orElse: () => throw Exception("Yearly product not found"),
+      (p) => p.id == 'drainshield_pro',
+      orElse: () => throw Exception("Pro product not found"),
     );
     await _buy(product);
   }
@@ -152,9 +141,16 @@ class BillingService extends ChangeNotifier {
   }
 
   Future<void> manageSubscription() async {
-    // In a real app, this would open the Play Store / App Store subscription management page.
-    // For now, it's a placeholder.
-    debugPrint("Opening subscription management...");
+    // Opens the Google Play subscription management page
+    const url =
+        'https://play.google.com/store/account/subscriptions?sku=drainshield_pro&package=app.drainshield.guard';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint(
+          '[BillingService] Could not launch subscription management URL');
+    }
   }
 
   void _onPurchaseUpdate(List<PurchaseDetails> purchaseDetailsList) {

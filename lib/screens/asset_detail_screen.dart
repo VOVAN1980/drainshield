@@ -42,6 +42,21 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
       _error = null;
     });
 
+    final asset = widget.asset;
+
+    // Non-EVM chains: no Moralis history API available
+    if (asset.chainKey == 'solana' || asset.chainKey == 'tron') {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _history = []; // No history API for non-EVM yet
+          _approvals = [];
+        });
+      }
+      return;
+    }
+
+    // EVM chains: existing Moralis flow
     final wc = WcService();
     if (!wc.isConnected) {
       setState(() {
@@ -51,7 +66,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
       return;
     }
 
-    final chainSlug = ChainConfig.getMoralisChainSlug(wc.currentChainId) ?? 'eth';
+    final chainSlug =
+        ChainConfig.getMoralisChainSlug(wc.currentChainId) ?? 'eth';
 
     try {
       if (widget.asset.isNative) {
@@ -73,7 +89,7 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
           chainSlug,
         );
       }
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -153,7 +169,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
       MaterialPageRoute(
         builder: (_) => ScanScreen(
           address: wc.address,
-          targetTokenAddress: widget.asset.isNative ? null : widget.asset.address,
+          targetTokenAddress:
+              widget.asset.isNative ? null : widget.asset.address,
           targetTokenName: widget.asset.name,
           targetTokenSymbol: widget.asset.symbol,
         ),
@@ -272,7 +289,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
           CircleAvatar(
             radius: 40,
             backgroundColor: Colors.white10,
-            backgroundImage: asset.logoUrl != null ? NetworkImage(asset.logoUrl!) : null,
+            backgroundImage:
+                asset.logoUrl != null ? NetworkImage(asset.logoUrl!) : null,
             child: asset.logoUrl == null
                 ? Text(
                     asset.symbol.isNotEmpty ? asset.symbol[0] : '?',
@@ -290,7 +308,13 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
             ),
           ),
           Text(
-            asset.isNative ? loc.t('assetTypeNative') : loc.t('assetTypeERC20'),
+            asset.isNative
+                ? loc.t('assetTypeNative')
+                : asset.chainKey == 'tron'
+                    ? 'TRC20 TOKEN'
+                    : asset.chainKey == 'solana'
+                        ? 'SPL TOKEN'
+                        : loc.t('assetTypeERC20'),
             style: const TextStyle(
               color: AppColors.tertiaryText,
               fontSize: 12,
@@ -308,7 +332,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
             ),
           ),
           Text(
-            NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(asset.valueUsd),
+            NumberFormat.currency(symbol: '\$', decimalDigits: 2)
+                .format(asset.valueUsd),
             style: const TextStyle(
               color: AppColors.tertiaryText,
               fontSize: 16,
@@ -321,16 +346,30 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
 
   Widget _buildActionButtons(LocalizationService loc, WcService wc) {
     final asset = widget.asset;
-    
+
     // Debug logging for easier troubleshooting on device
-    debugPrint("DEBUG: asset.isNative=${asset.isNative}, symbol='${asset.symbol}', name='${asset.name}', chainId=${asset.chainId}");
+    debugPrint(
+        "DEBUG: asset.isNative=${asset.isNative}, symbol='${asset.symbol}', name='${asset.name}', chainId=${asset.chainId}");
 
     // Combined exclusion list for the Scan button
-    final bool isMajorToken = ['USDT', 'USDC', 'DAI', 'BUSD', 'BNB', 'ETH', 'MATIC', 'POL', 'WBTC', 'WETH', 'WBNB']
-        .contains(asset.symbol.toUpperCase().trim());
-    final bool isSpecialAsset = asset.name.toUpperCase().contains('BNB') || asset.name.toUpperCase().contains('NATIVE');
-    
-    final bool shouldHideScan = asset.isNative || isMajorToken || isSpecialAsset;
+    final bool isMajorToken = [
+      'USDT',
+      'USDC',
+      'DAI',
+      'BUSD',
+      'BNB',
+      'ETH',
+      'MATIC',
+      'POL',
+      'WBTC',
+      'WETH',
+      'WBNB'
+    ].contains(asset.symbol.toUpperCase().trim());
+    final bool isSpecialAsset = asset.name.toUpperCase().contains('BNB') ||
+        asset.name.toUpperCase().contains('NATIVE');
+
+    final bool shouldHideScan =
+        asset.isNative || isMajorToken || isSpecialAsset;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -356,7 +395,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap, {bool isPrimary = false}) {
+  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap,
+      {bool isPrimary = false}) {
     final color = isPrimary ? const Color(0xFF00FF9D) : Colors.white70;
     return GestureDetector(
       onTap: onTap,
@@ -428,7 +468,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: (isIncoming ? Colors.green : Colors.orange).withOpacity(0.1),
+              color:
+                  (isIncoming ? Colors.green : Colors.orange).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -452,7 +493,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
                 ),
                 Text(
                   DateFormat('dd MMM, HH:mm').format(tx.timestamp),
-                  style: const TextStyle(color: AppColors.tertiaryText, fontSize: 11),
+                  style: const TextStyle(
+                      color: AppColors.tertiaryText, fontSize: 11),
                 ),
               ],
             ),
@@ -487,7 +529,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.security_update_warning, color: Color(0xFFEF4444), size: 20),
+          const Icon(Icons.security_update_warning,
+              color: Color(0xFFEF4444), size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -495,13 +538,17 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
               children: [
                 Text(
                   a.spender,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   '${loc.t('scanResAllowanceTitle')}: ${a.allowance > BigInt.from(1e30) ? 'Unlimited' : a.allowance.toString()}',
-                  style: const TextStyle(color: AppColors.tertiaryText, fontSize: 11),
+                  style: const TextStyle(
+                      color: AppColors.tertiaryText, fontSize: 11),
                 ),
               ],
             ),
@@ -514,7 +561,9 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
               minimumSize: const Size(60, 30),
             ),
-            child: Text(loc.t('scanResRevokeBtn'), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+            child: Text(loc.t('scanResRevokeBtn'),
+                style:
+                    const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

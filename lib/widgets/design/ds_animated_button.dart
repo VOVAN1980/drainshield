@@ -82,7 +82,9 @@ class _DsAnimatedButtonState extends State<DsAnimatedButton>
         animation: _scaleAnim,
         builder: (_, child) =>
             Transform.scale(scale: _scaleAnim.value, child: child),
-        child: DecoratedBox(
+        child: Container(
+          alignment: Alignment.center,
+          constraints: const BoxConstraints(minWidth: 80, minHeight: 48),
           decoration: BoxDecoration(
             borderRadius: widget.borderRadius,
             gradient: widget.gradient,

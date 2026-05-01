@@ -95,15 +95,17 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
     if (mounted) setState(() => _statusMessage = msg);
     debugPrint("[Boot] Starting step: $msg");
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       await action().timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          debugPrint("[Boot] TIMEOUT on step: $msg (after ${stopwatch.elapsed.inSeconds}s)");
+          debugPrint(
+              "[Boot] TIMEOUT on step: $msg (after ${stopwatch.elapsed.inSeconds}s)");
         },
       );
-      debugPrint("[Boot] Finished step: $msg (${stopwatch.elapsed.inMilliseconds}ms)");
+      debugPrint(
+          "[Boot] Finished step: $msg (${stopwatch.elapsed.inMilliseconds}ms)");
     } catch (e) {
       debugPrint("[Boot] ERROR on step: $msg: $e");
     }

@@ -1,7 +1,6 @@
 import 'dart:async';
 import "package:flutter/material.dart";
 import "../services/localization_service.dart";
-import "../widgets/top_nav.dart";
 import '../models/approval.dart';
 import '../models/gas_estimation_result.dart';
 import '../services/risk_engine.dart';
@@ -18,6 +17,8 @@ import "../services/approval_scan_service.dart";
 import "../services/pro/pro_service.dart";
 import "../services/security/security_event_service.dart";
 import "../config/app_colors.dart";
+import "../services/solana/solana_signing_bridge.dart";
+import "../services/tron/tron_signing_bridge.dart";
 
 /// Scan Result screen.
 ///
@@ -30,6 +31,7 @@ class ScanResultScreen extends StatefulWidget {
   final String? targetTokenSymbol;
   final String? highlightSpender;
   final String? highlightToken;
+  final String chainType; // 'evm', 'solana', 'tron'
 
   /// Pre-fetched approval list from the preceding scan screen.
   /// Must not be null вЂ” scan screens must always pass data.
@@ -44,6 +46,7 @@ class ScanResultScreen extends StatefulWidget {
     this.targetTokenSymbol,
     this.highlightSpender,
     this.highlightToken,
+    this.chainType = 'evm',
   });
 
   @override
@@ -140,6 +143,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       final newList = await ApprovalScanService.scan(
         widget.address,
         targetTokenAddress: widget.targetTokenAddress,
+        chainType: widget.chainType,
       );
 
       if (!mounted) return;
@@ -183,6 +187,24 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       return;
     }
 
+    final loc = LocalizationProvider.of(context);
+
+    // Check if non-EVM items need a compatible wallet
+    if (selectedItems.any((a) => a.chainType == 'solana') &&
+        !SolanaSigningBridge.canSign()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.t('revokeConnectSolana'))),
+      );
+      return;
+    }
+    if (selectedItems.any((a) => a.chainType == 'tron') &&
+        !TronSigningBridge.canSign()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.t('revokeConnectTron'))),
+      );
+      return;
+    }
+
     // Estimate total gas
     GasEstimationResult? estimate;
     try {
@@ -194,7 +216,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
     if (!mounted) return;
 
-    final loc = LocalizationProvider.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -307,15 +328,25 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       });
 
       queue.addJobs(selectedItems);
-      await queue.run();
+      final result = await queue.run();
 
       _queueSub?.cancel();
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.t('scanResRevokeTxSubmitted'))),
-      );
-      _selectedKeys.clear();
+
+      if (result.hasSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(loc.t('scanResRevokeTxSubmitted'))),
+        );
+        _selectedKeys.clear();
+        // Rescan only after confirmed success
+        await _refreshApprovals();
+      } else {
+        final errorMsg =
+            result.errors.isNotEmpty ? result.errors.first : 'Revoke failed';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(errorMsg)));
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -328,7 +359,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
           _revokingKeys.clear();
         });
       }
-      await _refreshApprovals();
     }
   }
 
@@ -337,15 +367,34 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     // but the UI will primarily use _revokeSelected.
     final k = _key(a);
     if (_revokingKeys.contains(k)) return;
-    setState(() => _revokingKeys.add(k));
 
     final loc = LocalizationProvider.of(context);
+
+    // Only block if compatible signing wallet is NOT connected
+    if (a.chainType == 'solana' && !SolanaSigningBridge.canSign()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.t('revokeConnectSolana'))),
+      );
+      return;
+    }
+    if (a.chainType == 'tron' && !TronSigningBridge.canSign()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.t('revokeConnectTron'))),
+      );
+      return;
+    }
+
+    setState(() => _revokingKeys.add(k));
+
     GasEstimationResult? estimate;
 
-    try {
-      estimate = await RevokeService.estimateGas(a: a);
-    } catch (e) {
-      debugPrint("Gas estimation failed: $e");
+    // Gas estimation is EVM-only — skip for Solana/Tron
+    if (a.chainType == 'evm') {
+      try {
+        estimate = await RevokeService.estimateGas(a: a);
+      } catch (e) {
+        debugPrint("Gas estimation failed: $e");
+      }
     }
 
     if (!mounted) {
@@ -456,12 +505,21 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       final queue = TransactionQueue();
       queue.clear();
       queue.addJobs([a]);
-      await queue.run();
+      final result = await queue.run();
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(loc.t('scanResRevokeSent'))));
+
+      if (result.hasSuccess) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(loc.t('scanResRevokeSent'))));
+        // Rescan only after confirmed success
+        await _refreshApprovals();
+      } else {
+        final errorMsg =
+            result.errors.isNotEmpty ? result.errors.first : 'Revoke failed';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(errorMsg)));
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -469,7 +527,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _revokingKeys.remove(k));
-      await _refreshApprovals();
     }
   }
 
@@ -478,7 +535,11 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: const TopNav(),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: DsBackground(
         child: Stack(
           children: [
@@ -558,7 +619,11 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                             ),
                             child: Text(
                               approvals.isNotEmpty
-                                  ? '${ChainConfig.getChainName(approvals.first.chainId).toUpperCase()} AUDIT'
+                                  ? widget.chainType == 'solana'
+                                      ? 'SOLANA DELEGATE AUDIT'
+                                      : widget.chainType == 'tron'
+                                          ? 'TRON ALLOWANCE AUDIT'
+                                          : '${ChainConfig.getChainName(approvals.first.chainId).toUpperCase()} AUDIT'
                                   : 'SECURITY AUDIT REPORT',
                               style: const TextStyle(
                                 color: AppColors.tertiaryText,

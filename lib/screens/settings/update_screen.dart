@@ -10,7 +10,8 @@ class UpdateScreen extends StatefulWidget {
   State<UpdateScreen> createState() => _UpdateScreenState();
 }
 
-class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderStateMixin {
+class _UpdateScreenState extends State<UpdateScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   UpdateCheckResult? _result;
   bool _isScanning = false;
@@ -22,7 +23,7 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    
+
     _checkUpdates(silent: true);
   }
 
@@ -34,12 +35,13 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
 
   Future<void> _checkUpdates({bool silent = false}) async {
     if (!silent) setState(() => _isScanning = true);
-    
+
     // Simulate minor delay for UX if requested manually
     if (!silent) await Future.delayed(const Duration(seconds: 2));
-    
-    final res = await UpdateService.instance.checkForUpdates(isAutoCheck: false);
-    
+
+    final res =
+        await UpdateService.instance.checkForUpdates(isAutoCheck: false);
+
     if (mounted) {
       setState(() {
         _result = res;
@@ -67,7 +69,8 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -99,9 +102,12 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: (_isScanning || _result?.status == UpdateStatus.updateAvailable)
-                      ? Colors.blue.withOpacity(0.3 * (1 - _pulseController.value))
-                      : Colors.green.withOpacity(0.3 * (1 - _pulseController.value)),
+                  color: (_isScanning ||
+                          _result?.status == UpdateStatus.updateAvailable)
+                      ? Colors.blue
+                          .withOpacity(0.3 * (1 - _pulseController.value))
+                      : Colors.green
+                          .withOpacity(0.3 * (1 - _pulseController.value)),
                   width: 2,
                 ),
               ),
@@ -125,9 +131,14 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
           child: Icon(
             _isScanning
                 ? Icons.sync
-                : (_result?.status == UpdateStatus.updateAvailable ? Icons.system_update : Icons.check_circle_outline),
+                : (_result?.status == UpdateStatus.updateAvailable
+                    ? Icons.system_update
+                    : Icons.check_circle_outline),
             size: 64,
-            color: (_isScanning || _result?.status == UpdateStatus.updateAvailable) ? Colors.blue : Colors.green,
+            color:
+                (_isScanning || _result?.status == UpdateStatus.updateAvailable)
+                    ? Colors.blue
+                    : Colors.green,
           ),
         ),
       ],
@@ -153,7 +164,9 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
     return Column(
       children: [
         Text(
-          isUpdate ? t.t('settingsUpdateNewMsg', {'version': _result!.latestVersion ?? ''}) : t.t('settingsUpdateLatestMsg'),
+          isUpdate
+              ? t.t('settingsUpdateNewMsg', {'version': _result!.latestDisplay})
+              : t.t('settingsUpdateLatestMsg'),
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Colors.white,
@@ -163,7 +176,7 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
         ),
         const SizedBox(height: 12),
         Text(
-          t.t('settingsAboutVersion', {'version': _result!.currentVersion ?? ''}),
+          t.t('settingsAboutVersion', {'version': _result!.currentDisplay}),
           style: TextStyle(
             color: Colors.white.withOpacity(0.5),
             fontSize: 14,
@@ -183,7 +196,9 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
       child: Column(
         children: [
           _buildButton(
-            label: isUpdate ? t.t('settingsUpdateActionUpdate') : t.t('settingsUpdateCheckBtn'),
+            label: isUpdate
+                ? t.t('settingsUpdateActionUpdate')
+                : t.t('settingsUpdateCheckBtn'),
             isPrimary: true,
             onTap: isUpdate ? _handleUpdate : () => _checkUpdates(),
           ),
@@ -200,7 +215,10 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildButton({required String label, required bool isPrimary, required VoidCallback onTap}) {
+  Widget _buildButton(
+      {required String label,
+      required bool isPrimary,
+      required VoidCallback onTap}) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -213,7 +231,9 @@ class _UpdateScreenState extends State<UpdateScreen> with SingleTickerProviderSt
           color: isPrimary ? Colors.blue.withOpacity(0.2) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isPrimary ? Colors.blue.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+            color: isPrimary
+                ? Colors.blue.withOpacity(0.5)
+                : Colors.white.withOpacity(0.1),
             width: 1,
           ),
         ),

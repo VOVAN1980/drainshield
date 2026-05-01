@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../models/security_event.dart';
+import '../../models/linked_wallet.dart';
 
 import '../settings/settings_service.dart';
 import '../pro/pro_service.dart';
@@ -36,7 +37,7 @@ class MonitoringService {
   }
 
   Future<void> scheduleBackgroundTask() async {
-    bool isPro = true; // Bypassed for review
+    bool isPro = ProService.instance.isProActive();
     final settings = SettingsService.instance.settings;
 
     if (!isPro || !settings.autoMonitoringEnabled) {
@@ -74,13 +75,11 @@ class MonitoringService {
     _isChecking = true;
 
     try {
-      /*
       if (!ProService.instance.isProActive()) {
         debugPrint(
             '[MonitoringService] Skip: Subscription not active (PRO-only feature)');
         return;
       }
-      */
 
       final settings = SettingsService.instance.settings;
       if (!settings.autoMonitoringEnabled && !kDebugMode) {
@@ -100,7 +99,7 @@ class MonitoringService {
           '[MonitoringService] Starting check for ${wallets.length} wallets');
 
       for (final wallet in wallets) {
-        await _runWalletCheck(wallet.address);
+        await _runWalletCheck(wallet);
       }
 
       // Update last scan time after successful run
@@ -114,41 +113,104 @@ class MonitoringService {
     }
   }
 
-  Future<void> _runWalletCheck(String address) async {
+  Future<void> _runWalletCheck(LinkedWallet wallet) async {
+    final address = wallet.address;
     final allRiskyKeys = <String>{};
-    final supportedChains = [1, 56, 137, 42161, 10, 8453];
 
-    for (final chainId in supportedChains) {
+    // Route by chain type
+    if (wallet.chainType == 'evm') {
+      // EVM: scan across all supported EVM chains
+      final supportedChains = [1, 56, 137, 42161, 10, 8453];
+
+      for (final chainId in supportedChains) {
+        try {
+          final chainName = ChainConfig.getChainName(chainId);
+
+          final approvals =
+              await ApprovalScanService.scan(address, chainId: chainId);
+
+          // Filter risky ones
+          final riskyApprovals =
+              approvals.where((a) => a.assessment.shouldRevoke).toList();
+
+          for (final a in riskyApprovals) {
+            allRiskyKeys.add("${chainId}_${a.spenderAddress}_${a.token}");
+          }
+
+          // Detect NEW risks using persisted state
+          final newRisks = riskyApprovals.where((a) {
+            return MonitoringStateService.instance.isNewRisk(
+              address,
+              a.spenderAddress,
+              a.token,
+              chainId,
+            );
+          }).toList();
+
+          if (newRisks.isNotEmpty) {
+            for (final risk in newRisks) {
+              final title = 'High Risk Detected ($chainName)';
+              final message =
+                  'Suspicious approval for ${risk.tokenSymbol} found on $chainName.';
+
+              SecurityEventService.instance.emit(
+                SecurityEvent(
+                  type: SecurityEventType.highRiskApproval,
+                  severity: risk.assessment.score >= 90 ? 'critical' : 'high',
+                  timestamp: DateTime.now(),
+                  walletAddress: address,
+                  title: title,
+                  message: message,
+                  metadata: {
+                    'spender': risk.spenderAddress,
+                    'token': risk.token,
+                    'symbol': risk.tokenSymbol,
+                    'chainId': chainId,
+                    'chainName': chainName,
+                    'riskScore': risk.assessment.score,
+                  },
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint('[MonitoringService] Error check on chain $chainId: $e');
+        }
+      }
+    } else {
+      // Solana / Tron: single-chain scan
       try {
-        final chainName = ChainConfig.getChainName(chainId);
-        // debugPrint('[Monitoring] Checking $address on $chainName...');
+        final chainLabel = wallet.chainType.toUpperCase();
 
-        final approvals =
-            await ApprovalScanService.scan(address, chainId: chainId);
+        final approvals = await ApprovalScanService.scan(
+          address,
+          chainType: wallet.chainType,
+        );
 
-        // Filter risky ones
         final riskyApprovals =
             approvals.where((a) => a.assessment.shouldRevoke).toList();
 
         for (final a in riskyApprovals) {
-          allRiskyKeys.add("${chainId}_${a.spenderAddress}_${a.token}");
+          allRiskyKeys
+              .add("${wallet.chainType}_${a.spenderAddress}_${a.token}");
         }
 
-        // Detect NEW risks using persisted state
+        // Detect NEW risks
         final newRisks = riskyApprovals.where((a) {
           return MonitoringStateService.instance.isNewRisk(
             address,
             a.spenderAddress,
             a.token,
-            chainId,
+            0, // chainId 0 for non-EVM
           );
         }).toList();
 
         if (newRisks.isNotEmpty) {
           for (final risk in newRisks) {
-            final title = 'High Risk Detected ($chainName)';
+            final title = 'High Risk Detected ($chainLabel)';
             final message =
-                'Suspicious approval for ${risk.tokenSymbol} found on $chainName.';
+                'Suspicious ${wallet.chainType == 'solana' ? 'delegate' : 'allowance'} '
+                'for ${risk.tokenSymbol} found on $chainLabel.';
 
             SecurityEventService.instance.emit(
               SecurityEvent(
@@ -162,8 +224,7 @@ class MonitoringService {
                   'spender': risk.spenderAddress,
                   'token': risk.token,
                   'symbol': risk.tokenSymbol,
-                  'chainId': chainId,
-                  'chainName': chainName,
+                  'chainType': wallet.chainType,
                   'riskScore': risk.assessment.score,
                 },
               ),
@@ -171,7 +232,9 @@ class MonitoringService {
           }
         }
       } catch (e) {
-        debugPrint('[MonitoringService] Error check on chain $chainId: $e');
+        debugPrint(
+          '[MonitoringService] Error check on ${wallet.chainType}: $e',
+        );
       }
     }
 

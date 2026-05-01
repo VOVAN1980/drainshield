@@ -2,6 +2,7 @@ import "dart:convert";
 import "package:flutter/foundation.dart";
 import "package:http/http.dart" as http;
 import "../models/approval.dart";
+import "../models/linked_wallet.dart";
 import "../config/chains.dart";
 import "risk_engine.dart";
 import "wc_service.dart";
@@ -9,6 +10,7 @@ import "moralis_parser.dart";
 import "moralis/moralis_config_service.dart";
 import "security/blockchain_analysis_service.dart";
 import "spender_intelligence_service.dart";
+import "approval_scan_service.dart";
 
 class GlobalApprovalScanner {
   static Future<List<ApprovalData>> scanAllApprovals(String wallet) async {
@@ -71,10 +73,12 @@ class GlobalApprovalScanner {
 
     // Filter for enrichment: Only deep-scan approvals that have some basic risk
     // or are completely unknown, to save time during Panic Mode pipeline
-    final toEnrich = out.where((a) =>
-        a.assessment.score > 0 ||
-        a.reputation == SpenderReputation.unknown ||
-        a.reputation == SpenderReputation.suspicious).toList();
+    final toEnrich = out
+        .where((a) =>
+            a.assessment.score > 0 ||
+            a.reputation == SpenderReputation.unknown ||
+            a.reputation == SpenderReputation.suspicious)
+        .toList();
 
     // Enrichment Phase: Deep Analysis
     final analysis = BlockchainAnalysisService.instance;
@@ -102,12 +106,51 @@ class GlobalApprovalScanner {
       } catch (e) {
         // Silently skip enrichment for failed probes to avoid blocking entire scan
         // This acts as a fallback/timeout failure handler
-        debugPrint("Panic Mode Enrichment failed for ${item.spenderAddress}: $e");
+        debugPrint(
+            "Panic Mode Enrichment failed for ${item.spenderAddress}: $e");
       }
     }));
 
     // Re-evaluate with enriched data to generate final rescue plan
     RiskEngine.evaluateApprovals(out);
     return out;
+  }
+
+  /// Scans multiple wallets across different chains.
+  ///
+  /// Routes each wallet to the appropriate scanner based on its [chainType]:
+  /// - EVM wallets use full Moralis enrichment pipeline
+  /// - Solana/Tron wallets use ApprovalScanService routing
+  ///
+  /// Returns aggregated results from all wallets.
+  static Future<List<ApprovalData>> scanMultiChain(
+    List<LinkedWallet> wallets,
+  ) async {
+    final allResults = <ApprovalData>[];
+
+    for (final wallet in wallets) {
+      try {
+        List<ApprovalData> results;
+        if (wallet.chainType == 'evm') {
+          results = await scanAllApprovals(wallet.address);
+        } else {
+          results = await ApprovalScanService.scan(
+            wallet.address,
+            chainType: wallet.chainType,
+          );
+          // Evaluate risks for non-EVM (scanAllApprovals does it internally)
+          RiskEngine.evaluateApprovals(results);
+        }
+        allResults.addAll(results);
+      } catch (e) {
+        debugPrint(
+          '[GlobalApprovalScanner] Multi-chain scan failed for '
+          '${wallet.chainType}/${wallet.address}: $e',
+        );
+        // Continue with other wallets
+      }
+    }
+
+    return allResults;
   }
 }

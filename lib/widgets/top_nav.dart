@@ -39,12 +39,16 @@ class TopNav extends StatelessWidget implements PreferredSizeWidget {
               size: 26,
             ),
             const SizedBox(width: 8),
-            Text(
-              loc.t('dashboardTitle'),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.1,
+            Flexible(
+              child: Text(
+                loc.t('dashboardTitle'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -104,7 +108,9 @@ class TopNav extends StatelessWidget implements PreferredSizeWidget {
                   border: Border.all(color: Colors.white24),
                 ),
                 alignment: Alignment.center,
+                constraints: const BoxConstraints(maxWidth: 180),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.account_balance_wallet,

@@ -79,4 +79,77 @@ class ChainConfig {
   static String getNativeSymbol(int chainId) {
     return _nativeSymbolMap[chainId] ?? 'ETH';
   }
+
+  // ── Non-EVM Chain Support (Solana, Tron) ─────────────────────────────────
+
+  /// Returns true if the chainKey is a non-EVM chain.
+  static bool isNonEvmChain(String chainKey) {
+    return chainKey == 'solana' || chainKey == 'tron';
+  }
+
+  /// Returns human-readable chain name for any chain key.
+  static String getChainNameByKey(String chainKey) {
+    switch (chainKey) {
+      case 'solana':
+        return 'Solana';
+      case 'tron':
+        return 'Tron';
+      default:
+        // Fall back to EVM chain name lookup
+        final id = getChainId(chainKey);
+        return id != 0 ? getChainName(id) : chainKey;
+    }
+  }
+
+  /// Returns the native symbol for any chain key.
+  static String getNativeSymbolByKey(String chainKey) {
+    switch (chainKey) {
+      case 'solana':
+        return 'SOL';
+      case 'tron':
+        return 'TRX';
+      default:
+        final id = getChainId(chainKey);
+        return getNativeSymbol(id);
+    }
+  }
+
+  /// Returns an explorer URL for any chain key + address.
+  static String? getExplorerUrlByKey(String chainKey, String address) {
+    switch (chainKey) {
+      case 'solana':
+        return 'https://solscan.io/account/$address';
+      case 'tron':
+        return 'https://tronscan.org/#/address/$address';
+      default:
+        final id = getChainId(chainKey);
+        return getExplorerUrl(id, address);
+    }
+  }
+
+  /// Returns an explorer URL for a transaction hash.
+  static String? getTxExplorerUrl(String chainKey, String txHash) {
+    switch (chainKey) {
+      case 'solana':
+        return 'https://solscan.io/tx/$txHash';
+      case 'tron':
+        return 'https://tronscan.org/#/transaction/$txHash';
+      default:
+        final id = getChainId(chainKey);
+        final base = _explorerMap[id];
+        if (base == null) return null;
+        return '$base/tx/$txHash';
+    }
+  }
+
+  /// All supported chain keys for network selector.
+  static const List<Map<String, String>> allNetworks = [
+    {'id': 'bsc', 'name': 'BNB Chain'},
+    {'id': 'eth', 'name': 'Ethereum'},
+    {'id': 'polygon', 'name': 'Polygon'},
+    {'id': 'arbitrum', 'name': 'Arbitrum'},
+    {'id': 'base', 'name': 'Base'},
+    {'id': 'solana', 'name': 'Solana'},
+    {'id': 'tron', 'name': 'Tron'},
+  ];
 }

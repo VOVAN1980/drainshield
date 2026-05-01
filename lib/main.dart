@@ -40,7 +40,7 @@ void main() async {
 
   // Register the daily update check task
   await Workmanager().registerPeriodicTask(
-    "1", 
+    "1",
     "app_update_check",
     frequency: const Duration(hours: 24),
     initialDelay: const Duration(minutes: 5), // Wait a bit after 1st install
@@ -94,7 +94,8 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
   Future<void> _checkForUpdates() async {
     // Wait for the first frame to ensure Navigator is ready
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final result = await UpdateService.instance.checkForUpdates(isAutoCheck: true);
+      final result =
+          await UpdateService.instance.checkForUpdates(isAutoCheck: true);
       if (result.status == UpdateStatus.updateAvailable && mounted) {
         _showUpdateDialog(result);
       }
@@ -121,7 +122,11 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
             const SizedBox(width: 12),
             Text(
               t.t('settingsUpdateTitle').toUpperCase(),
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2),
             ),
           ],
         ),
@@ -130,13 +135,21 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              t.t('settingsUpdateNewMsg', {'version': result.latestVersion ?? ''}),
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              t.t('settingsUpdateNewMsg', {'version': result.latestDisplay}),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
-              t.t('settingsAboutVersion', {'version': result.currentVersion ?? ''}),
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+              t.t('settingsAboutVersion', {'version': result.currentDisplay}),
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -145,7 +158,9 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               t.t('settingsUpdateActionLater').toUpperCase(),
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontWeight: FontWeight.bold),
             ),
           ),
           ElevatedButton(
@@ -157,7 +172,8 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
               backgroundColor: Colors.blue.withOpacity(0.2),
               foregroundColor: Colors.blue,
               side: BorderSide(color: Colors.blue.withOpacity(0.5)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: Text(
               t.t('settingsUpdateActionUpdate').toUpperCase(),

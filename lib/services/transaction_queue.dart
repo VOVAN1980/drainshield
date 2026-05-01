@@ -5,6 +5,9 @@ import '../models/gas_estimation_result.dart';
 import 'revoke_service.dart';
 import 'security/security_event_service.dart';
 import '../models/security_event.dart';
+import 'localization_service.dart';
+import 'solana/solana_signing_bridge.dart';
+import 'tron/tron_signing_bridge.dart';
 
 enum RevokeJobStatus { pending, waitingWallet, submitted, confirmed, failed }
 
@@ -40,6 +43,28 @@ class RevokeProgress {
   double get percent => total == 0 ? 0 : completed / total;
 }
 
+/// Result of a TransactionQueue.run() execution.
+/// Callers MUST check this to determine actual success/failure.
+class QueueRunResult {
+  final int total;
+  final int successCount;
+  final int failedCount;
+  final List<String> txHashes;
+  final List<String> errors;
+
+  QueueRunResult({
+    required this.total,
+    required this.successCount,
+    required this.failedCount,
+    required this.txHashes,
+    required this.errors,
+  });
+
+  bool get hasSuccess => successCount > 0;
+  bool get allSucceeded => successCount == total;
+  bool get allFailed => failedCount == total;
+}
+
 class TransactionQueue {
   static final TransactionQueue _instance = TransactionQueue._internal();
   factory TransactionQueue() => _instance;
@@ -67,8 +92,18 @@ class TransactionQueue {
     _notify();
   }
 
-  Future<void> run({bool emitEvents = true}) async {
-    if (_isRunning || _jobs.isEmpty) return;
+  /// Returns [QueueRunResult] with actual success/failure counts.
+  /// Callers MUST check result — do not assume success after this returns.
+  Future<QueueRunResult> run({bool emitEvents = true}) async {
+    if (_isRunning || _jobs.isEmpty) {
+      return QueueRunResult(
+        total: 0,
+        successCount: 0,
+        failedCount: 0,
+        txHashes: [],
+        errors: [],
+      );
+    }
     _isRunning = true;
 
     int successCount = 0;
@@ -88,7 +123,28 @@ class TransactionQueue {
       _notifyProgress(completed, successCount, failedCount, job);
 
       try {
-        final txHash = await RevokeService.revokeApproval(a: job.approval);
+        // Route revoke by chain type
+        final chainType = job.approval.chainType;
+        String txHash;
+
+        switch (chainType) {
+          case 'solana':
+            if (!SolanaSigningBridge.canSign()) {
+              throw LocalizationService.instance.t('revokeConnectSolana');
+            }
+            txHash = await SolanaSigningBridge.revokeApproval(job.approval);
+            break;
+          case 'tron':
+            if (!TronSigningBridge.canSign()) {
+              throw LocalizationService.instance.t('revokeConnectTron');
+            }
+            txHash = await TronSigningBridge.revokeApproval(job.approval);
+            break;
+          default:
+            // EVM revoke (existing flow)
+            txHash = await RevokeService.revokeApproval(a: job.approval);
+        }
+
         job.txHash = txHash;
         job.status = RevokeJobStatus.submitted;
         successCount++;
@@ -128,6 +184,20 @@ class TransactionQueue {
 
     _isRunning = false;
     _notifyProgress(completed, successCount, failedCount, null);
+
+    return QueueRunResult(
+      total: completed,
+      successCount: successCount,
+      failedCount: failedCount,
+      txHashes: _jobs
+          .where((j) => j.txHash != null && j.txHash!.isNotEmpty)
+          .map((j) => j.txHash!)
+          .toList(),
+      errors: _jobs
+          .where((j) => j.error != null && j.error!.isNotEmpty)
+          .map((j) => j.error!)
+          .toList(),
+    );
   }
 
   void _notifyProgress(
@@ -173,6 +243,9 @@ class TransactionQueue {
     int successCount = 0;
 
     for (var a in approvals) {
+      // Skip non-EVM approvals — gas estimation is EVM-specific
+      if (a.chainType != 'evm') continue;
+
       try {
         final estimate = await RevokeService.estimateGas(a: a);
         totalGas += estimate.estimatedGas;

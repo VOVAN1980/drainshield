@@ -39,7 +39,8 @@ class _SecurityEventsScreenState extends State<SecurityEventsScreen> {
                   }
 
                   final bool isPro = ProService.instance.isProActive();
-                  final int eventsToShow = isPro ? events.length : events.length.clamp(0, 5);
+                  final int eventsToShow =
+                      isPro ? events.length : events.length.clamp(0, 5);
 
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),

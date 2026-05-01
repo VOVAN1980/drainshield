@@ -16,8 +16,6 @@ class ProScreen extends StatefulWidget {
 }
 
 class _ProScreenState extends State<ProScreen> {
-  bool _isYearly = true;
-
   @override
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
@@ -40,19 +38,15 @@ class _ProScreenState extends State<ProScreen> {
                 Positioned.fill(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(24, 270, 24, 40),
+                    padding: const EdgeInsets.fromLTRB(24, 235, 24, 40),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (!status.isPro) ...[
-                          _buildReviewNoticeCard(loc),
+                        if (status.isPro) ...[
+                          _buildSubscriptionDetails(loc, status),
                           const SizedBox(height: 32),
                         ] else ...[
-                          if (_isExpiring(status)) ...[
-                            _buildPlanSelector(loc),
-                            const SizedBox(height: 32),
-                          ],
-                          _buildSubscriptionDetails(loc, status),
+                          _buildPlanSelector(loc),
                           const SizedBox(height: 32),
                         ],
                         _buildFeatureSection(loc),
@@ -62,12 +56,10 @@ class _ProScreenState extends State<ProScreen> {
                             child: CircularProgressIndicator(
                                 color: Color(0xFFFFD25A)),
                           )
-                        else if (status.isPro)
-                          _buildMainAction(loc, status, billing)
                         else
-                          const SizedBox.shrink(),
+                          _buildMainAction(loc, status, billing),
                         const SizedBox(height: 24),
-                        if (status.isPro) _buildFooter(loc, billing),
+                        _buildFooter(loc, billing),
                       ],
                     ),
                   ),
@@ -75,7 +67,7 @@ class _ProScreenState extends State<ProScreen> {
 
                 // ── Fixed Gold Header ───────────────────────────────
                 Positioned(
-                  top: 0,
+                  top: -35,
                   left: 0,
                   right: 0,
                   child: _buildGoldHeader(context, loc),
@@ -91,47 +83,6 @@ class _ProScreenState extends State<ProScreen> {
   bool _isExpiring(ProStatus status) {
     if (!status.isPro || status.expiryDate == null) return false;
     return status.expiryDate!.difference(DateTime.now()).inDays < 3;
-  }
-
-  Widget _buildReviewNoticeCard(LocalizationService loc) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFD25A).withOpacity(0.05),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFFFD25A).withOpacity(0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.info_outline_rounded,
-                  color: Color(0xFFFFD25A), size: 20),
-              SizedBox(width: 12),
-              Text(
-                "Limited Review Build",
-                style: TextStyle(
-                  color: Color(0xFFFFD25A),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "Google Play Billing and subscription management are disabled in this binary. All core security features (Approval Scanning, Risk Scoring) remain fully functional for testing purposes.",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
-              fontSize: 13,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildGoldHeader(BuildContext context, LocalizationService loc) {
@@ -214,89 +165,67 @@ class _ProScreenState extends State<ProScreen> {
   }
 
   Widget _buildPlanSelector(LocalizationService loc) {
-    return Row(
-      children: [
-        Expanded(child: _buildPlanCard(loc, false)),
-        const SizedBox(width: 16),
-        Expanded(child: _buildPlanCard(loc, true)),
-      ],
-    );
+    return _buildPlanCard(loc);
   }
 
-  Widget _buildPlanCard(LocalizationService loc, bool isYearly) {
-    final bool isSelected = _isYearly == isYearly;
+  Widget _buildPlanCard(LocalizationService loc) {
     const activeColor = Color(0xFFFFD25A);
 
-    return GestureDetector(
-      onTap: () => setState(() => _isYearly = isYearly),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? activeColor.withOpacity(0.1)
-              : Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isSelected
-                ? activeColor.withOpacity(0.5)
-                : Colors.white.withOpacity(0.08),
-            width: 1.5,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: activeColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: activeColor.withOpacity(0.5),
+          width: 1.5,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isYearly ? loc.t('proYearlyPlan') : loc.t('proMonthlyPlan'),
-                  style: TextStyle(
-                    color: isSelected ? activeColor : AppColors.tertiaryText,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                if (isYearly)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: activeColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      "HOT",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            loc.t('proMonthlyPlan'),
+            style: const TextStyle(
+              color: activeColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
             ),
-            const SizedBox(height: 8),
-            Text(
-              isYearly ? loc.t('proPriceYearly') : loc.t('proPriceMonthly'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            if (isYearly)
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
               Text(
-                "SAVE 33%",
-                style: TextStyle(
-                  color: activeColor.withOpacity(0.85),
-                  fontSize: 10,
+                loc.t('proPriceMonthly'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-          ],
-        ),
+              const SizedBox(width: 6),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  loc.t('proPriceSuffix'),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            loc.t('proPriceCancelHint'),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.4),
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -496,11 +425,7 @@ class _ProScreenState extends State<ProScreen> {
       ),
       child: ElevatedButton(
         onPressed: () async {
-          if (_isYearly) {
-            await billing.buyYearly();
-          } else {
-            await billing.buyMonthly();
-          }
+          await billing.buyPro();
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
@@ -521,30 +446,18 @@ class _ProScreenState extends State<ProScreen> {
   }
 
   Widget _buildFooter(LocalizationService loc, BillingService billing) {
-    return Column(
-      children: [
-        Center(
-          child: Text(
-            loc.t('proPriceCancelHint'),
-            style: const TextStyle(color: AppColors.tertiaryText, fontSize: 12),
-            textAlign: TextAlign.center,
+    return Center(
+      child: TextButton(
+        onPressed: () => billing.restorePurchases(),
+        child: Text(
+          loc.t('proRestoreBtn'),
+          style: const TextStyle(
+            color: AppColors.tertiaryText,
+            fontSize: 13,
+            decoration: TextDecoration.underline,
           ),
         ),
-        const SizedBox(height: 12),
-        Center(
-          child: TextButton(
-            onPressed: () => billing.restorePurchases(),
-            child: Text(
-              loc.t('proRestoreBtn'),
-              style: const TextStyle(
-                color: AppColors.tertiaryText,
-                fontSize: 13,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

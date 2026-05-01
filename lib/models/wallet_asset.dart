@@ -12,6 +12,7 @@ class WalletAsset {
   final int decimals;
   final bool isNative;
   final int chainId;
+  final String chainKey; // 'bsc', 'eth', 'solana', 'tron'
 
   WalletAsset({
     required this.name,
@@ -24,6 +25,7 @@ class WalletAsset {
     required this.decimals,
     this.isNative = false,
     required this.chainId,
+    this.chainKey = 'bsc',
   });
 
   factory WalletAsset.fromMoralis(Map<String, dynamic> json, {String? chain}) {
@@ -82,6 +84,7 @@ class WalletAsset {
       decimals: decimals,
       isNative: false,
       chainId: chain != null ? ChainConfig.getChainId(chain) : 1,
+      chainKey: chain ?? 'eth',
     );
   }
 
@@ -93,6 +96,7 @@ class WalletAsset {
     required double priceUsd,
     required int decimals,
     required int chainId,
+    String chainKey = 'bsc',
   }) {
     return WalletAsset(
       name: name,
@@ -105,6 +109,7 @@ class WalletAsset {
       decimals: decimals,
       isNative: true,
       chainId: chainId,
+      chainKey: chainKey,
     );
   }
 }

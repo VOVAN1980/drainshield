@@ -76,7 +76,8 @@ class WalletRegistryService extends ChangeNotifier {
     if (addr.isEmpty) return;
 
     // 1. Is it already in registry?
-    final registeredWallet = _wallets.where((w) => w.address.toLowerCase() == addr).firstOrNull;
+    final registeredWallet =
+        _wallets.where((w) => w.address.toLowerCase() == addr).firstOrNull;
     if (registeredWallet != null) {
       // Auto-select the connected wallet if it's in our registry
       if (_selectedAddress?.toLowerCase() != addr) {
@@ -92,7 +93,8 @@ class WalletRegistryService extends ChangeNotifier {
       debugPrint('[WalletRegistry] Auto-adding first wallet: $addr');
       await addWallet(LinkedWallet(
         address: addr,
-        label: 'Wallet 1',
+        label: 'Wallet',
+
         addedAt: DateTime.now(),
         isPrimary: true,
         isActive: true, // First one is always active
@@ -116,15 +118,18 @@ class WalletRegistryService extends ChangeNotifier {
   }
 
   void _refreshWalletStates() {
-    // final isPro = ProService.instance.isProActive();
+    final isPro = ProService.instance.isProActive();
     bool changed = false;
 
     // We need to identify which wallet is primary to KEEP it active in Free mode.
-    // getPrimaryWallet() logic already exists and is deterministic.
-    // final primary = getPrimaryWallet();
+    final primary = getPrimaryWallet();
 
     _wallets = _wallets.map((w) {
-      bool shouldBeActive = true; // Bypassed for review
+      // In Free mode, only the primary wallet is active.
+      // In PRO, all linked wallets are active.
+      bool shouldBeActive =
+          isPro || (primary != null && w.address == primary.address);
+
       if (w.isActive != shouldBeActive) {
         changed = true;
         return w.copyWith(isActive: shouldBeActive);
@@ -175,12 +180,13 @@ class WalletRegistryService extends ChangeNotifier {
       return false;
     }
 
+    final isPro = ProService.instance.isProActive();
+
     // If this is the first wallet, make it primary
     final isFirst = _wallets.isEmpty;
-    // Bypassed for review
     final walletToAdd = wallet.copyWith(
       isPrimary: isFirst || wallet.isPrimary,
-      isActive: true, // Always active for review
+      isActive: isFirst || isPro, // For review: now real PRO check
     );
 
     _wallets.add(walletToAdd);
@@ -253,7 +259,7 @@ class WalletRegistryService extends ChangeNotifier {
       return w;
     }).toList();
 
-    // If zero primaries found, we no longer automatically promote. 
+    // If zero primaries found, we no longer automatically promote.
     // The user must manually select a primary via the connection flow.
     // if (!primaryFound && _wallets.isNotEmpty) {
     //   _wallets[0] = _wallets[0].copyWith(isPrimary: true);
@@ -283,10 +289,7 @@ class WalletRegistryService extends ChangeNotifier {
 
   List<LinkedWallet> getMonitoringEligibleWallets() {
     // Monitoring is strictly a PRO feature.
-    // Even if one wallet is 'active' for basic usage in Free mode,
-    // it is NOT eligible for background monitoring.
-    // Monitoring is currently open for the review build
-    // if (!ProService.instance.isProActive()) return [];
+    if (!ProService.instance.isProActive()) return [];
 
     // In PRO, all active linked wallets are monitored.
     return List.unmodifiable(_wallets.where((w) => w.isActive));

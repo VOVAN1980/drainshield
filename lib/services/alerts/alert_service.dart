@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import '../security/security_event_service.dart';
 import '../settings/settings_service.dart';
+import '../pro/pro_service.dart';
 import 'notification_service.dart';
 import 'sound_service.dart';
 import '../../models/security_event.dart';
@@ -59,6 +61,24 @@ class AlertService {
         break;
       default:
         break;
+    }
+
+    // PRO Gating for Premium Alerts
+    final isPro = ProService.instance.isProActive();
+    bool isPremiumAlert = false;
+
+    if (event.type == SecurityEventType.highRiskApproval ||
+        event.type == SecurityEventType.unlimitedApproval ||
+        event.type == SecurityEventType.threatDbHit ||
+        event.type == SecurityEventType.monitoringCheckFailed ||
+        event.type == SecurityEventType.panicTriggered) {
+      isPremiumAlert = true;
+    }
+
+    if (isPremiumAlert && !isPro) {
+      debugPrint(
+          '[AlertService] Skip premium notification: Subscription not active');
+      return;
     }
 
     if (shouldNotify) {

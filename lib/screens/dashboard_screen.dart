@@ -40,9 +40,21 @@ class _DashboardScreenState extends State<DashboardScreen>
       );
       return;
     }
+    // Resolve chainType from selected wallet card
+    final registry = WalletRegistryService.instance;
+    final selectedWallet = registry.wallets
+        .where((w) => w.address.toLowerCase() == address.toLowerCase())
+        .firstOrNull;
+    final chainType = selectedWallet?.chainType ?? 'evm';
+
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ScanScreen(address: address)),
+      MaterialPageRoute(
+        builder: (_) => ScanScreen(
+          address: address,
+          chainType: chainType,
+        ),
+      ),
     );
   }
 
@@ -147,13 +159,16 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _onRegistryUpdate() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   void _onHealthUpdate() {
     if (mounted) setState(() {});
   }
-
 
   Widget _buildSystemStatus(LocalizationService loc) {
     final health = SystemHealthService.instance.state;
@@ -342,26 +357,34 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _onPanicTap() async {
-    final wc = WcService();
     final registry = WalletRegistryService.instance;
-    final activeAddress = registry.selectedAddress;
-    final bool isSessionMatch = wc.isConnected && wc.address.toLowerCase() == activeAddress.toLowerCase();
 
-    if (!isSessionMatch) {
+    // Collect all active wallets for multi-chain Panic scan
+    final activeWallets = registry.wallets.where((w) => w.isActive).toList();
+
+    if (activeWallets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 4),
           backgroundColor: Colors.redAccent,
-          content: Text(LocalizationService.instance.t('dashboardPanicConnectFirst')),
+          content: Text(
+              LocalizationService.instance.t('dashboardPanicConnectFirst')),
         ),
       );
       return;
     }
 
+    final activeAddress = registry.selectedAddress;
+
     // Navigate directly to the full-screen Panic Mode flow
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PanicScanScreen(address: activeAddress)),
+      MaterialPageRoute(
+        builder: (_) => PanicScanScreen(
+          address: activeAddress,
+          wallets: activeWallets,
+        ),
+      ),
     );
 
     // Update score after panic scan completes
@@ -374,25 +397,30 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   /// Builds a shield-pulsing wrapper around [child].
   Widget _withShieldPulse(Widget child, Color accentColor) {
-    return AnimatedBuilder(
-      animation: _shieldPulseCtrl,
-      builder: (_, inner) => Transform.scale(
-        scale: _shieldScale.value,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: accentColor.withOpacity(0.25 * _shieldGlow.value),
-                blurRadius: 18,
-                spreadRadius: 2,
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _shieldPulseCtrl,
+        builder: (_, inner) => Transform.scale(
+          scale: _shieldScale.value,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 70, minHeight: 70),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(100),
+                boxShadow: [
+                  BoxShadow(
+                    color: accentColor.withOpacity(0.25 * _shieldGlow.value),
+                    blurRadius: 18,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-            ],
+              child: inner,
+            ),
           ),
-          child: inner,
         ),
+        child: child,
       ),
-      child: child,
     );
   }
 
@@ -401,28 +429,36 @@ class _DashboardScreenState extends State<DashboardScreen>
     final loc = LocalizationProvider.of(context);
     final wc = WcService();
     final registry = WalletRegistryService.instance;
-    
-    // Unified Display Address: registry first, then active session (ONLY if connected)
-    final String displayAddress = wc.isConnected 
-        ? (registry.selectedAddress.isNotEmpty ? registry.selectedAddress : wc.address)
-        : '';
-        
-    final bool isSessionMatch = wc.isConnected && 
+
+    // Unified Display Address: registry first, then active session
+    // Non-EVM wallets may not have a WalletConnect session
+    final String displayAddress = registry.selectedAddress.isNotEmpty
+        ? registry.selectedAddress
+        : (wc.isConnected ? wc.address : '');
+
+    final bool isSessionMatch = wc.isConnected &&
         wc.address.toLowerCase().trim() == displayAddress.toLowerCase().trim();
-        
-    final int effectiveChainId = (wc.isConnected && wc.currentChainId != 0) 
-        ? wc.currentChainId 
+
+    final int effectiveChainId = (wc.isConnected && wc.currentChainId != 0)
+        ? wc.currentChainId
         : (registry.selectedChainId != 0 ? registry.selectedChainId : 56);
-    
-    final bool isReadyToScan = displayAddress.isNotEmpty;
-    
+
+    final bool hasActiveWallets = registry.wallets.any((w) => w.isActive);
+
+    // Resolve selected wallet's chainType for badge display
+    final selectedWallet = registry.wallets
+        .where((w) => w.address.toLowerCase() == displayAddress.toLowerCase())
+        .firstOrNull;
+    final String selectedChainType = selectedWallet?.chainType ?? 'evm';
+
+    final bool isReadyToScan = displayAddress.isNotEmpty || hasActiveWallets;
+
     // Green for active session, Blue for read-only / mismatch
-    final Color accentColor = isSessionMatch 
-        ? const Color(0xFF00FF9D) 
-        : const Color(0xFF00B8FF);
-        
+    final Color accentColor =
+        isSessionMatch ? const Color(0xFF00FF9D) : const Color(0xFF00B8FF);
+
     final bool hasScan = _riskScore != null;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFF030509),
       body: DsBackground(
@@ -577,9 +613,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      displayAddress.isEmpty 
-                                        ? loc.t('dashboardSystemReadyTitle') 
-                                        : loc.t('dashboardReadyToScan'),
+                                      displayAddress.isEmpty
+                                          ? loc.t('dashboardSystemReadyTitle')
+                                          : loc.t('dashboardReadyToScan'),
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 20,
@@ -588,7 +624,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    _buildChainBadge(loc, effectiveChainId, accentColor),
+                                    _buildChainBadge(loc, effectiveChainId,
+                                        selectedChainType, accentColor),
                                     const SizedBox(height: 12),
                                     Text(
                                       loc.t('dashboardNoRiskScore'),
@@ -598,8 +635,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
-                                     const SizedBox(height: 10),
-                                    _buildAddressInfo(loc, displayAddress, wc, isSessionMatch),
+                                    const SizedBox(height: 10),
+                                    _buildAddressInfo(loc, displayAddress, wc,
+                                        isSessionMatch),
                                   ] else ...[
                                     _buildRiskScoreGauge(accentColor),
                                     const SizedBox(height: 8),
@@ -612,9 +650,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    _buildChainBadge(loc, effectiveChainId, accentColor),
+                                    _buildChainBadge(loc, effectiveChainId,
+                                        selectedChainType, accentColor),
                                     const SizedBox(height: 12),
-                                    _buildAddressInfo(loc, displayAddress, wc, isSessionMatch),
+                                    _buildAddressInfo(loc, displayAddress, wc,
+                                        isSessionMatch),
                                   ],
                                 ],
                               ],
@@ -650,18 +690,41 @@ class _DashboardScreenState extends State<DashboardScreen>
                             onPressed: _isBooting
                                 ? null
                                 : () async {
-                                    if (!wc.isConnected) {
+                                    // Resolve chainType from selected wallet card
+                                    final selWallet = registry.wallets
+                                        .where((w) =>
+                                            w.address.toLowerCase() ==
+                                            displayAddress.toLowerCase())
+                                        .firstOrNull;
+                                    final chainType =
+                                        selWallet?.chainType ?? 'evm';
+
+                                    // If no wallet in registry and not connected,
+                                    // prompt WalletConnect
+                                    if (selWallet == null && !wc.isConnected) {
                                       wc.connect(context);
                                       return;
                                     }
+
+                                    // Use registry address if available,
+                                    // fall back to WC address
+                                    final scanAddr = displayAddress.isNotEmpty
+                                        ? displayAddress
+                                        : wc.address;
+
+                                    if (scanAddr.isEmpty) {
+                                      wc.connect(context);
+                                      return;
+                                    }
+
                                     await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) =>
-                                            ScanScreen(
-                                              address: displayAddress,
-                                              chainId: effectiveChainId,
-                                            ),
+                                        builder: (_) => ScanScreen(
+                                          address: scanAddr,
+                                          chainId: effectiveChainId,
+                                          chainType: chainType,
+                                        ),
                                       ),
                                     );
                                     if (mounted) {
@@ -691,7 +754,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                             ],
                             child: Center(
                               child: Text(
-                                !wc.isConnected
+                                !wc.isConnected &&
+                                        registry.selectedAddress.isEmpty
                                     ? loc.t('dashboardConnectWalletBtn')
                                     : loc.t('dashboardMakeSafeBtn'),
                                 maxLines: 1,
@@ -737,10 +801,35 @@ class _DashboardScreenState extends State<DashboardScreen>
                     delay: const Duration(milliseconds: 90),
                     child: Opacity(
                       opacity: _isBooting ? 0.5 : 1.0,
-                      child: DsSlideAction(
-                        onAction:
-                            (!isSessionMatch || _isBooting) ? null : _onPanicTap,
-                        label: loc.t('dashboardPanicModeBtn'),
+                      child: Column(
+                        children: [
+                          DsSlideAction(
+                            onAction: (!hasActiveWallets || _isBooting)
+                                ? null
+                                : (ProService.instance.isProActive()
+                                    ? _onPanicTap
+                                    : () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const ProScreen(),
+                                          ),
+                                        )),
+                            label: loc.t('dashboardPanicModeBtn'),
+                          ),
+                          if (!ProService.instance.isProActive() && !_isBooting)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                loc.t('settingsSecurityProMonitoringHint'),
+                                style: TextStyle(
+                                  color: Colors.orange.withOpacity(0.8),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -754,7 +843,24 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildChainBadge(LocalizationService loc, int chainId, Color accentColor) {
+  Widget _buildChainBadge(
+    LocalizationService loc,
+    int chainId,
+    String chainType,
+    Color accentColor,
+  ) {
+    // Use chainType directly — avoids chainId=0 fallback to BNB for non-EVM
+    final String label;
+    if (chainType == 'solana') {
+      label = 'SOLANA';
+    } else if (chainType == 'tron') {
+      label = 'TRON';
+    } else {
+      label = loc
+          .t('chain${ChainConfig.getChainName(chainId).replaceAll(' ', '')}')
+          .toUpperCase();
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -763,7 +869,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         border: Border.all(color: accentColor.withOpacity(0.3)),
       ),
       child: Text(
-        loc.t('chain${ChainConfig.getChainName(chainId).replaceAll(' ', '')}').toUpperCase(),
+        label,
         style: TextStyle(
           color: accentColor,
           fontSize: 10,
@@ -903,9 +1009,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             child: Text(
               loc.t('dashboardStatusBrowser'),
               style: const TextStyle(
-                  color: Colors.blue,
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold),
+                  color: Colors.blue, fontSize: 8, fontWeight: FontWeight.bold),
             ),
           ),
       ],

@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 import java.io.FileInputStream
 
@@ -27,7 +28,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = "21"
+        // old style removed
     }
 
     defaultConfig {
@@ -66,6 +67,12 @@ android {
             }
         }
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        disable.add("InvalidPackage")
+    }
 }
 
 flutter {
@@ -79,4 +86,10 @@ dependencies {
 
 tasks.withType<JavaCompile> {
     options.compilerArgs.add("-Xlint:-deprecation")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }

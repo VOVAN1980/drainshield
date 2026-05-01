@@ -11,11 +11,14 @@ class UpdateService {
   UpdateService._internal();
 
   static const String appId = 'app.drainshield.guard';
-  static const String versionUrl = 'https://vovan1980.github.io/drainshield/version.json';
-  
+  static const String versionUrl =
+      'https://vovan1980.github.io/drainshield/version.json';
+
   // Default fallback URL if JSON fetch fails or doesn't provide one
-  static const String defaultPlayStoreUrl = 'https://play.google.com/store/apps/details?id=$appId';
-  static const String defaultAppStoreUrl = 'https://apps.apple.com/app/id6739669566';
+  static const String defaultPlayStoreUrl =
+      'https://play.google.com/store/apps/details?id=$appId';
+  static const String defaultAppStoreUrl =
+      'https://apps.apple.com/app/id6739669566';
 
   String? _cachedUpdateUrl;
 
@@ -37,21 +40,25 @@ class UpdateService {
 
       final remoteData = await _getRemoteVersionData();
       if (remoteData == null) {
-        return UpdateCheckResult(status: isAutoCheck ? UpdateStatus.upToDate : UpdateStatus.error);
+        return UpdateCheckResult(
+            status: isAutoCheck ? UpdateStatus.upToDate : UpdateStatus.error);
       }
 
       final String remoteVersion = remoteData['version'] ?? '0.0.0';
       final int remoteBuild = remoteData['build'] ?? 0;
       _cachedUpdateUrl = remoteData['url'];
 
-      if (_isUpdateAvailable(localVersion, localBuild, remoteVersion, remoteBuild)) {
+      if (_isUpdateAvailable(
+          localVersion, localBuild, remoteVersion, remoteBuild)) {
         if (isAutoCheck) {
           await _updateLastCheckTime();
         }
         return UpdateCheckResult(
           status: UpdateStatus.updateAvailable,
-          currentVersion: '$localVersion+$localBuild',
-          latestVersion: '$remoteVersion+$remoteBuild',
+          localVersion: localVersion,
+          localBuild: localBuild,
+          remoteVersion: remoteVersion,
+          remoteBuild: remoteBuild,
           updateUrl: _cachedUpdateUrl,
         );
       }
@@ -62,18 +69,22 @@ class UpdateService {
 
       return UpdateCheckResult(
         status: UpdateStatus.upToDate,
-        currentVersion: '$localVersion+$localBuild',
-        latestVersion: '$remoteVersion+$remoteBuild',
+        localVersion: localVersion,
+        localBuild: localBuild,
+        remoteVersion: remoteVersion,
+        remoteBuild: remoteBuild,
       );
     } catch (e) {
       debugPrint('[UpdateService] Error checking for updates: $e');
-      return UpdateCheckResult(status: isAutoCheck ? UpdateStatus.upToDate : UpdateStatus.error);
+      return UpdateCheckResult(
+          status: isAutoCheck ? UpdateStatus.upToDate : UpdateStatus.error);
     }
   }
 
   Future<Map<String, dynamic>?> _getRemoteVersionData() async {
     try {
-      final response = await http.get(Uri.parse('$versionUrl?t=${DateTime.now().millisecondsSinceEpoch}'));
+      final response = await http.get(
+          Uri.parse('$versionUrl?t=${DateTime.now().millisecondsSinceEpoch}'));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -83,7 +94,8 @@ class UpdateService {
     return null;
   }
 
-  bool _isUpdateAvailable(String localV, int localB, String remoteV, int remoteB) {
+  bool _isUpdateAvailable(
+      String localV, int localB, String remoteV, int remoteB) {
     try {
       final v1 = localV.split('.').map((e) => int.tryParse(e) ?? 0).toList();
       final v2 = remoteV.split('.').map((e) => int.tryParse(e) ?? 0).toList();
@@ -119,12 +131,15 @@ class UpdateService {
   Future<void> _updateLastCheckTime() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('last_update_check_ms', DateTime.now().millisecondsSinceEpoch);
+      await prefs.setInt(
+          'last_update_check_ms', DateTime.now().millisecondsSinceEpoch);
     } catch (_) {}
   }
 
   Future<void> launchStore({String? customUrl}) async {
-    final url = customUrl ?? _cachedUpdateUrl ?? (Platform.isAndroid ? defaultPlayStoreUrl : defaultAppStoreUrl);
+    final url = customUrl ??
+        _cachedUpdateUrl ??
+        (Platform.isAndroid ? defaultPlayStoreUrl : defaultAppStoreUrl);
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     }
@@ -135,15 +150,25 @@ enum UpdateStatus { upToDate, updateAvailable, error }
 
 class UpdateCheckResult {
   final UpdateStatus status;
-  final String? currentVersion;
-  final String? latestVersion;
+  final String? localVersion;
+  final int? localBuild;
+  final String? remoteVersion;
+  final int? remoteBuild;
   final String? updateUrl;
 
   UpdateCheckResult({
-    required this.status, 
-    this.currentVersion, 
-    this.latestVersion,
+    required this.status,
+    this.localVersion,
+    this.localBuild,
+    this.remoteVersion,
+    this.remoteBuild,
     this.updateUrl,
   });
-}
 
+  String get currentDisplay => localVersion != null
+      ? (localBuild != null ? '$localVersion ($localBuild)' : localVersion!)
+      : '---';
+  String get latestDisplay => remoteVersion != null
+      ? (remoteBuild != null ? '$remoteVersion ($remoteBuild)' : remoteVersion!)
+      : '---';
+}

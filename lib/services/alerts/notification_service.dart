@@ -7,6 +7,7 @@ import '../../main.dart'; // Import navigatorKey
 import '../../screens/scan_screen.dart';
 import '../../screens/settings/subscription_screen.dart';
 import '../settings/settings_service.dart';
+import '../localization_service.dart';
 
 class NotificationService {
   static final NotificationService instance = NotificationService._();
@@ -133,11 +134,53 @@ class NotificationService {
   void _goToSubscription(NavigatorState state) {
     // We need to import the screen
     // For now, let's assume it's available or we'll add the import
-    // Note: To be minimally invasive, we use MaterialPageRoute
+    // Note: To be minimally invasive,
     state.push(
       MaterialPageRoute(
         builder: (_) => const SubscriptionScreen(),
       ),
+    );
+  }
+
+  Future<void> showUpdateNotification(String version) async {
+    if (_isQuietMode()) return;
+
+    final String title = LocalizationService.instance.t('settingsUpdateTitle');
+    final String body = LocalizationService.instance
+        .t('settingsUpdateNewMsg', {'version': version});
+
+    final soundSettings = SettingsService.instance.settings.soundSettings;
+    final soundId =
+        soundSettings.selectedAlertSoundId; // Using alert sound for updates
+    final resourceName = _mapSoundToResource('alert', soundId);
+
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'app_updates',
+      'Software Updates',
+      channelDescription: 'Notifications for new app versions',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: soundSettings.soundEnabled,
+      sound: soundSettings.soundEnabled
+          ? RawResourceAndroidNotificationSound(resourceName)
+          : null,
+    );
+
+    final NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(
+        presentSound: true,
+        presentAlert: true,
+      ),
+    );
+
+    await _notifications.show(
+      id: 999, // Unique ID for update notifications
+      title: title,
+      body: body,
+      notificationDetails: platformDetails,
+      payload: json.encode({'type': 'app_update', 'version': version}),
     );
   }
 
@@ -341,18 +384,20 @@ class NotificationService {
           iOS: DarwinNotificationDetails(),
         );
 
-        final daysLeft = daysBefore == 0 ? "today" : "in $daysBefore days";
+        final loc = LocalizationService.instance;
+        final title = loc.t('notificationSubExpiryTitle');
         final body = daysBefore == 0
-            ? "Your PRO subscription expires today! Renew now to keep your wallets protected."
-            : "Your PRO subscription will expire $daysLeft. Don't forget to renew!";
+            ? loc.t('notificationSubExpiryToday')
+            : loc.t(
+                'notificationSubExpiryDays', {'days': daysBefore.toString()});
 
         await _notifications.zonedSchedule(
           id: id,
-          title: 'Subscription Reminder',
+          title: title,
           body: body,
           scheduledDate: tz.TZDateTime.from(finalScheduled, tz.local),
           notificationDetails: platformDetails,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         );
       }
     }

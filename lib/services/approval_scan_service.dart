@@ -6,12 +6,39 @@ import "risk_engine.dart";
 import "wc_service.dart";
 import "moralis_parser.dart";
 import "moralis/moralis_config_service.dart";
+import "solana/solana_approval_service.dart";
+import "tron/tron_approval_service.dart";
 
 class ApprovalScanService {
   static int? lastRiskScore;
   static bool hasRiskyApprovals = false;
 
+  /// Unified scan entry point.
+  ///
+  /// Routes to chain-specific scanner based on [chainType]:
+  /// - 'evm' (default): Moralis API via existing flow
+  /// - 'solana': SPL delegate detection via Solana RPC
+  /// - 'tron': TRC20 allowance detection via TronGrid
   static Future<List<ApprovalData>> scan(
+    String wallet, {
+    String? targetTokenAddress,
+    int? chainId,
+    String chainType = 'evm',
+  }) async {
+    switch (chainType) {
+      case 'solana':
+        return _scanSolana(wallet);
+      case 'tron':
+        return _scanTron(wallet);
+      default:
+        return _scanEvm(wallet,
+            targetTokenAddress: targetTokenAddress, chainId: chainId);
+    }
+  }
+
+  // ── EVM Scanner (existing Moralis flow — untouched) ────────────────────────
+
+  static Future<List<ApprovalData>> _scanEvm(
     String wallet, {
     String? targetTokenAddress,
     int? chainId,
@@ -60,6 +87,26 @@ class ApprovalScanService {
     updateScore(out);
     return out;
   }
+
+  // ── Solana Scanner ─────────────────────────────────────────────────────────
+
+  static Future<List<ApprovalData>> _scanSolana(String wallet) async {
+    final results = await SolanaApprovalService.scan(wallet);
+    RiskEngine.evaluate(results);
+    updateScore(results);
+    return results;
+  }
+
+  // ── Tron Scanner ───────────────────────────────────────────────────────────
+
+  static Future<List<ApprovalData>> _scanTron(String wallet) async {
+    final results = await TronApprovalService.scan(wallet);
+    RiskEngine.evaluate(results);
+    updateScore(results);
+    return results;
+  }
+
+  // ── Shared Score Logic ─────────────────────────────────────────────────────
 
   static void updateScore(List<ApprovalData> approvals) {
     if (approvals.isEmpty) {

@@ -12,8 +12,7 @@ class ProService extends ChangeNotifier {
   static final ProService instance = ProService._internal();
   ProService._internal();
 
-  /// If true, all PRO features are unlocked and billing checks are skipped (for Play Store review).
-  static bool isReviewBuild = true;
+  // Review mode removed for production
 
   static const String _key = 'pro_status';
   ProStatus _status = ProStatus.free();
@@ -70,24 +69,14 @@ class ProService extends ChangeNotifier {
     PurchaseDetails? active;
     SubscriptionPlan? plan;
 
-    // Direct search for yearly first (priority)
     try {
       active = activePurchases.firstWhere((p) =>
-          p.productID == 'pro_yearly' &&
+          p.productID == 'drainshield_pro' &&
           (p.status == PurchaseStatus.purchased ||
               p.status == PurchaseStatus.restored));
-      plan = SubscriptionPlan.yearly;
+      plan = SubscriptionPlan.monthly; // Default TO monthly for drainshield_pro
     } catch (_) {
-      // Not found, check monthly
-      try {
-        active = activePurchases.firstWhere((p) =>
-            p.productID == 'pro_monthly' &&
-            (p.status == PurchaseStatus.purchased ||
-                p.status == PurchaseStatus.restored));
-        plan = SubscriptionPlan.monthly;
-      } catch (_) {
-        active = null;
-      }
+      active = null;
     }
 
     if (active != null && plan != null) {
@@ -127,8 +116,18 @@ class ProService extends ChangeNotifier {
     );
   }
 
+  // ── QA-only PRO override ───────────────────────────────────────────────────
+  // Controlled by: flutter run --dart-define=QA_FORCE_PRO=true
+  // Works ONLY in debug mode. In release builds this is always false.
+  // Real Google Play billing logic below is completely unchanged.
+  static const bool _qaForcePro =
+      bool.fromEnvironment('QA_FORCE_PRO', defaultValue: false);
+
   bool isProActive() {
-    if (isReviewBuild) return true; // Unlocked for review
+    // QA override — debug only, never in release
+    if (kDebugMode && _qaForcePro) return true;
+
+    // Real PRO check (unchanged)
     if (!_status.isPro) return false;
     if (_status.expiryDate == null) return true;
     return _status.expiryDate!.isAfter(DateTime.now());

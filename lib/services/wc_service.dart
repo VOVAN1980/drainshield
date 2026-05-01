@@ -20,6 +20,44 @@ class WcService extends ChangeNotifier {
     return parts.length >= 3 ? parts[2] : "";
   }
 
+  /// Returns the Solana address from the connected wallet session, if any.
+  String get solanaAddress {
+    final s = _modal?.session;
+    final ns = s?.namespaces;
+    if (ns == null || ns.isEmpty) return "";
+    final accounts = ns["solana"]?.accounts ?? const <String>[];
+    if (accounts.isEmpty) return "";
+    final parts = accounts.first.split(":"); // solana:5eykt...:addr
+    return parts.length >= 3 ? parts[2] : "";
+  }
+
+  /// Returns true if the connected wallet supports Solana signing.
+  bool get hasSolanaSigning {
+    final s = _modal?.session;
+    final ns = s?.namespaces;
+    if (ns == null) return false;
+    return ns.containsKey('solana');
+  }
+
+  /// Returns the Tron address from the connected wallet session, if any.
+  String get tronAddress {
+    final s = _modal?.session;
+    final ns = s?.namespaces;
+    if (ns == null || ns.isEmpty) return "";
+    final accounts = ns["tron"]?.accounts ?? const <String>[];
+    if (accounts.isEmpty) return "";
+    final parts = accounts.first.split(":"); // tron:0x2b6653dc:T...
+    return parts.length >= 3 ? parts[2] : "";
+  }
+
+  /// Returns true if the connected wallet supports Tron signing.
+  bool get hasTronSigning {
+    final s = _modal?.session;
+    final ns = s?.namespaces;
+    if (ns == null) return false;
+    return ns.containsKey('tron');
+  }
+
   String get guestName {
     final s = _modal?.session;
     if (s == null) return "Wallet";
@@ -85,6 +123,26 @@ class WcService extends ChangeNotifier {
             'chainChanged',
             'accountsChanged',
           ],
+        ),
+        'solana': const RequiredNamespace(
+          chains: [
+            'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', // Solana mainnet
+          ],
+          methods: [
+            'solana_signTransaction',
+            'solana_signMessage',
+          ],
+          events: [],
+        ),
+        'tron': const RequiredNamespace(
+          chains: [
+            'tron:0x2b6653dc', // Tron Mainnet
+          ],
+          methods: [
+            'tron_signTransaction',
+            'tron_signMessage',
+          ],
+          events: [],
         ),
       },
     );

@@ -9,8 +9,8 @@ import '../config/chains.dart';
 import '../services/risk_engine.dart';
 import '../services/risk_explanation_service.dart';
 import '../services/revoke_service.dart';
+import '../services/transaction_queue.dart';
 import '../widgets/design/ds_background.dart';
-import '../widgets/top_nav.dart';
 import '../services/security/security_event_service.dart';
 import '../models/security_event.dart';
 
@@ -76,6 +76,11 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
   }
 
   Future<void> _loadGasEstimate() async {
+    // Gas estimation is EVM-only
+    if (widget.approval.chainType != 'evm') {
+      if (mounted) setState(() => _loadingGas = false);
+      return;
+    }
     try {
       final estimate = await RevokeService.estimateGas(a: widget.approval);
       if (mounted) setState(() => _gasEstimate = estimate);
@@ -90,8 +95,22 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
     setState(() => _revoking = true);
     final loc = LocalizationProvider.of(context);
     try {
-      final txHash = await RevokeService.revokeApproval(a: widget.approval);
+      // Route through TransactionQueue for multi-chain support
+      final queue = TransactionQueue();
+      queue.clear();
+      queue.addJobs([widget.approval]);
+      final result = await queue.run();
+
+      // Only mark success if the job actually succeeded
+      if (!result.hasSuccess) {
+        final errorMsg =
+            result.errors.isNotEmpty ? result.errors.first : 'Revoke failed';
+        throw errorMsg;
+      }
+
+      // Job confirmed — safe to update UI state
       widget.approval.allowance = BigInt.zero;
+      final txHash = result.txHashes.isNotEmpty ? result.txHashes.first : '';
 
       // Emit security event for timeline (FREE & PRO)
       SecurityEventService.instance.emit(
@@ -136,6 +155,31 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
     }
   }
 
+  /// Returns chain display label based on chainType, not chainId.
+  String _getChainLabel(ApprovalData a) {
+    switch (a.chainType) {
+      case 'solana':
+        return 'SOLANA';
+      case 'tron':
+        return 'TRON';
+      default:
+        return ChainConfig.getChainName(a.chainId).toUpperCase();
+    }
+  }
+
+  /// Returns explorer URL based on chainType.
+  /// Solana → Solscan, Tron → Tronscan, EVM → existing ChainConfig.
+  String? _getExplorerUrl(ApprovalData a) {
+    switch (a.chainType) {
+      case 'solana':
+        return 'https://solscan.io/account/${a.spenderAddress}';
+      case 'tron':
+        return 'https://tronscan.org/#/address/${a.spenderAddress}';
+      default:
+        return ChainConfig.getExplorerUrl(a.chainId, a.spenderAddress);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
@@ -149,12 +193,16 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
 
     final tokenName = a.tokenName ?? 'Unknown Token';
     final tokenSymbol = a.tokenSymbol ?? '???';
-    final chainLabel = ChainConfig.getChainName(a.chainId).toUpperCase();
+    final chainLabel = _getChainLabel(a);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: const TopNav(),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: DsBackground(
         accentColor: _accentColor,
         child: SafeArea(
@@ -342,10 +390,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                       // Explorer button
                       Builder(
                         builder: (ctx) {
-                          final url = ChainConfig.getExplorerUrl(
-                            a.chainId,
-                            a.spenderAddress,
-                          );
+                          final url = _getExplorerUrl(a);
                           if (url == null) {
                             return Text(
                               loc.t('approvalExplorerUnavailable'),

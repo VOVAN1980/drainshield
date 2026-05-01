@@ -10,6 +10,7 @@ import 'settings/sounds_settings_screen.dart';
 import 'settings/security_settings_screen.dart';
 import 'settings/subscription_screen.dart';
 import 'settings/language_settings_screen.dart';
+import 'settings/update_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -64,69 +65,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            const MascotImage(
-              mascotState: MascotState.settings,
-              width: 250,
-              height: 250,
+            Transform.translate(
+              offset: const Offset(0, -35),
+              child: const IgnorePointer(
+                child: MascotImage(
+                  mascotState: MascotState.settings,
+                  width: 250,
+                  height: 250,
+                ),
+              ),
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                children: [
-                  _buildSectionHeader(loc.t('settingsAccount')),
-                  _buildSettingsRow(
-                    context,
-                    loc.t('settingsSubscription'),
-                    Icons.star_outline,
-                    const SubscriptionScreen(),
-                    isPremium: true,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSectionHeader(loc.t('settingsSecurity')),
-                  _buildSettingsRow(
-                    context,
-                    loc.t('settingsSecurityEvents'),
-                    Icons.security_outlined,
-                    const SecuritySettingsScreen(),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSectionHeader(loc.t('settingsPreferences')),
-                  _buildSettingsRow(
-                    context,
-                    loc.t('settingsLanguage'),
-                    Icons.language,
-                    const LanguageSettingsScreen(),
-                  ),
-                  _buildSettingsRow(
-                    context,
-                    loc.t('settingsNotifications'),
-                    Icons.notifications_none_outlined,
-                    const NotificationsSettingsScreen(),
-                  ),
-                  _buildSettingsRow(
-                    context,
-                    loc.t('settingsSound'),
-                    Icons.volume_up_outlined,
-                    const SoundsSettingsScreen(),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSectionHeader(loc.t('settingsAboutTitle')),
-                  _buildAboutSection(context, loc),
-                  const SizedBox(height: 32),
-                  Center(
-                    child: Opacity(
-                      opacity: 0.5,
-                      child: Text(
-                        "Version ${_packageInfo?.version ?? '...'}",
-                        style: const TextStyle(
-                          color: AppColors.tertiaryText,
-                          fontSize: 10,
+              child: Transform.translate(
+                offset: const Offset(0, -35),
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  children: [
+                    _buildSectionHeader(loc.t('settingsAccount')),
+                    _buildSettingsRow(
+                      context,
+                      loc.t('settingsSubscription'),
+                      Icons.star_outline,
+                      const SubscriptionScreen(),
+                      isPremium: true,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSectionHeader(loc.t('settingsSecurity')),
+                    _buildSettingsRow(
+                      context,
+                      loc.t('settingsSecurityEvents'),
+                      Icons.security_outlined,
+                      const SecuritySettingsScreen(),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSectionHeader(loc.t('settingsPreferences')),
+                    _buildSettingsRow(
+                      context,
+                      loc.t('settingsLanguage'),
+                      Icons.language,
+                      const LanguageSettingsScreen(),
+                    ),
+                    _buildSettingsRow(
+                      context,
+                      loc.t('settingsNotifications'),
+                      Icons.notifications_none_outlined,
+                      const NotificationsSettingsScreen(),
+                    ),
+                    _buildSettingsRow(
+                      context,
+                      loc.t('settingsSound'),
+                      Icons.volume_up_outlined,
+                      const SoundsSettingsScreen(),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSectionHeader(loc.t('settingsAboutTitle')),
+                    _buildAboutSection(context, loc),
+                    const SizedBox(height: 32),
+                    Center(
+                      child: Opacity(
+                        opacity: 0.8,
+                        child: Text(
+                          "Version ${_packageInfo != null ? '${_packageInfo!.version} (${_packageInfo!.buildNumber})' : '...'}",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 48),
-                ],
+                    const SizedBox(height: 48),
+                  ],
+                ),
               ),
             ),
           ],
@@ -159,6 +169,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Column(
         children: [
+          _buildSettingsRow(
+            context,
+            loc.t('settingsUpdateTitle'),
+            Icons.system_update_outlined,
+            const UpdateScreen(),
+            isTransparent: true,
+          ),
           _buildSettingsRow(
             context,
             loc.t('settingsAboutTitle'),

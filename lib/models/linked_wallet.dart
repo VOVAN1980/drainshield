@@ -5,6 +5,7 @@ class LinkedWallet {
   final bool isPrimary;
   final bool isActive;
   final bool monitoringEnabled; // Deprecated: using isActive driven by PRO
+  final String chainType; // 'evm', 'solana', 'tron'
 
   LinkedWallet({
     required this.address,
@@ -13,6 +14,7 @@ class LinkedWallet {
     this.isPrimary = false,
     this.isActive = true,
     this.monitoringEnabled = true,
+    this.chainType = 'evm',
   });
 
   Map<String, dynamic> toJson() => {
@@ -22,6 +24,7 @@ class LinkedWallet {
         'isPrimary': isPrimary,
         'isActive': isActive,
         'monitoringEnabled': monitoringEnabled,
+        'chainType': chainType,
       };
 
   factory LinkedWallet.fromJson(Map<String, dynamic> json) => LinkedWallet(
@@ -33,6 +36,7 @@ class LinkedWallet {
         isPrimary: json['isPrimary'] ?? false,
         isActive: json['isActive'] ?? true,
         monitoringEnabled: json['monitoringEnabled'] ?? true,
+        chainType: json['chainType'] ?? 'evm',
       );
 
   LinkedWallet copyWith({
@@ -42,6 +46,7 @@ class LinkedWallet {
     bool? isPrimary,
     bool? isActive,
     bool? monitoringEnabled,
+    String? chainType,
   }) {
     return LinkedWallet(
       address: address ?? this.address,
@@ -50,6 +55,7 @@ class LinkedWallet {
       isPrimary: isPrimary ?? this.isPrimary,
       isActive: isActive ?? this.isActive,
       monitoringEnabled: monitoringEnabled ?? this.monitoringEnabled,
+      chainType: chainType ?? this.chainType,
     );
   }
 }

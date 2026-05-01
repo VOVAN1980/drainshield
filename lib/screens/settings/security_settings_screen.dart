@@ -103,28 +103,34 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildMonitoringAction(
-                                  loc, settings.autoMonitoringEnabled, true),
+                                  loc,
+                                  settings.autoMonitoringEnabled,
+                                  ProService.instance.isProActive()),
                               const SizedBox(height: 24),
                               _buildToggle(
                                 loc.t('settingsSecurityAutoMonitoring'),
                                 settings.autoMonitoringEnabled,
-                                (val) {
-                                  SettingsService.instance
-                                      .updateMonitoringSettings(
-                                    autoMonitoringEnabled: val,
-                                  );
-                                  if (val) _runMonitoring();
-                                },
-                                isPro: true,
+                                ProService.instance.isProActive()
+                                    ? (val) {
+                                        SettingsService.instance
+                                            .updateMonitoringSettings(
+                                          autoMonitoringEnabled: val,
+                                        );
+                                        if (val) _runMonitoring();
+                                      }
+                                    : null,
+                                isPro: ProService.instance.isProActive(),
                               ),
                               _buildIntervalSelector(
                                 loc.t('settingsSecurityInterval'),
                                 settings.monitoringIntervalMinutes,
                                 [15, 30, 60, 120, 240],
-                                (val) => SettingsService.instance
-                                    .updateMonitoringSettings(
-                                  monitoringIntervalMinutes: val,
-                                ),
+                                ProService.instance.isProActive()
+                                    ? (val) => SettingsService.instance
+                                            .updateMonitoringSettings(
+                                          monitoringIntervalMinutes: val,
+                                        )
+                                    : null,
                                 subtitle:
                                     loc.t('settingsSecurityIntervalMinHint'),
                               ),
@@ -654,13 +660,17 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          isStale
-                              ? loc.t('settingsSecurityStatusStale')
-                              : loc.t('settingsSecurityStatusHealthy'),
+                          (ProService.instance.isProActive() &&
+                                  SettingsService
+                                      .instance.settings.autoMonitoringEnabled)
+                              ? loc.t('settingsSecurityStatusHealthy')
+                              : loc.t('settingsSecurityNotActive'),
                           style: TextStyle(
-                            color: isStale
-                                ? Colors.orange
-                                : const Color(0xFF00FF9D),
+                            color: (ProService.instance.isProActive() &&
+                                    SettingsService.instance.settings
+                                        .autoMonitoringEnabled)
+                                ? const Color(0xFF00FF9D)
+                                : Colors.white24,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
