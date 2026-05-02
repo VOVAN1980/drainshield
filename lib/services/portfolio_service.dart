@@ -349,18 +349,30 @@ class PortfolioService {
 
   /// Known Solana SPL tokens: mint address → (symbol, name, decimals, isStable)
   static const Map<String, _SplTokenInfo> _knownSplTokens = {
-    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': _SplTokenInfo('USDC', 'USD Coin', 6, true),
-    'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': _SplTokenInfo('USDT', 'Tether', 6, true),
-    'So11111111111111111111111111111111111111112': _SplTokenInfo('WSOL', 'Wrapped SOL', 9, false),
-    'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': _SplTokenInfo('BONK', 'Bonk', 5, false),
-    'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN': _SplTokenInfo('JUP', 'Jupiter', 6, false),
-    '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs': _SplTokenInfo('ETH', 'Ether (Wormhole)', 8, false),
-    'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So': _SplTokenInfo('mSOL', 'Marinade SOL', 9, false),
-    '7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj': _SplTokenInfo('stSOL', 'Lido Staked SOL', 9, false),
-    'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3': _SplTokenInfo('PYTH', 'Pyth Network', 6, false),
-    'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof': _SplTokenInfo('RNDR', 'Render Token', 8, false),
-    'jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL': _SplTokenInfo('JTO', 'Jito', 9, false),
-    'WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p91oHk': _SplTokenInfo('WEN', 'Wen', 5, false),
+    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v':
+        _SplTokenInfo('USDC', 'USD Coin', 6, true),
+    'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB':
+        _SplTokenInfo('USDT', 'Tether', 6, true),
+    'So11111111111111111111111111111111111111112':
+        _SplTokenInfo('WSOL', 'Wrapped SOL', 9, false),
+    'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263':
+        _SplTokenInfo('BONK', 'Bonk', 5, false),
+    'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN':
+        _SplTokenInfo('JUP', 'Jupiter', 6, false),
+    '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs':
+        _SplTokenInfo('ETH', 'Ether (Wormhole)', 8, false),
+    'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So':
+        _SplTokenInfo('mSOL', 'Marinade SOL', 9, false),
+    '7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj':
+        _SplTokenInfo('stSOL', 'Lido Staked SOL', 9, false),
+    'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3':
+        _SplTokenInfo('PYTH', 'Pyth Network', 6, false),
+    'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof':
+        _SplTokenInfo('RNDR', 'Render Token', 8, false),
+    'jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL':
+        _SplTokenInfo('JTO', 'Jito', 9, false),
+    'WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p91oHk':
+        _SplTokenInfo('WEN', 'Wen', 5, false),
   };
 
   Future<List<WalletAsset>> _fetchSolanaPortfolio(String address) async {
@@ -378,8 +390,7 @@ class PortfolioService {
           .timeout(const Duration(seconds: 3));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        solPriceUsd =
-            double.tryParse(data['price']?.toString() ?? '0') ?? 0.0;
+        solPriceUsd = double.tryParse(data['price']?.toString() ?? '0') ?? 0.0;
       }
     } catch (_) {
       debugPrint('[PortfolioService] Solana: Binance price fetch failed');

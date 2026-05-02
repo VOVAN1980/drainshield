@@ -76,7 +76,8 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
     _isScanning = true;
     _scanProgress = 0.0;
     final startTime = DateTime.now();
-    debugPrint('[PanicScan] ▶ START | wallets=${widget.wallets.length} | fallback=${widget.address.substring(0, 8)}...');
+    debugPrint(
+        '[PanicScan] ▶ START | wallets=${widget.wallets.length} | fallback=${widget.address.substring(0, 8)}...');
     _simulateScanProgress();
 
     try {
@@ -88,7 +89,8 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
 
         for (final wallet in widget.wallets) {
           final walletStart = DateTime.now();
-          debugPrint('[PanicScan] 🔍 Scanning ${wallet.chainType}/${wallet.address.substring(0, 8)}...');
+          debugPrint(
+              '[PanicScan] 🔍 Scanning ${wallet.chainType}/${wallet.address.substring(0, 8)}...');
           try {
             List<ApprovalData> results;
             if (wallet.chainType == 'evm') {
@@ -103,12 +105,16 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
                 chainType: wallet.chainType,
               );
             }
-            final walletMs = DateTime.now().difference(walletStart).inMilliseconds;
-            debugPrint('[PanicScan] ✅ ${wallet.chainType} done in ${walletMs}ms | found=${results.length}');
+            final walletMs =
+                DateTime.now().difference(walletStart).inMilliseconds;
+            debugPrint(
+                '[PanicScan] ✅ ${wallet.chainType} done in ${walletMs}ms | found=${results.length}');
             allResults.addAll(results);
           } catch (e) {
-            final walletMs = DateTime.now().difference(walletStart).inMilliseconds;
-            debugPrint('[PanicScan] ❌ ${wallet.chainType} FAILED in ${walletMs}ms | $e');
+            final walletMs =
+                DateTime.now().difference(walletStart).inMilliseconds;
+            debugPrint(
+                '[PanicScan] ❌ ${wallet.chainType} FAILED in ${walletMs}ms | $e');
             // Continue scanning other wallets
           }
         }
@@ -123,11 +129,13 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
       }
 
       final scanMs = DateTime.now().difference(startTime).inMilliseconds;
-      debugPrint('[PanicScan] 📊 All scans done in ${scanMs}ms | total=${_allApprovals.length} approvals');
+      debugPrint(
+          '[PanicScan] 📊 All scans done in ${scanMs}ms | total=${_allApprovals.length} approvals');
 
       _riskyApprovals =
           _allApprovals.where((a) => a.assessment.shouldRevoke).toList();
-      debugPrint('[PanicScan] ⚠️ Risky=${_riskyApprovals.length} / Total=${_allApprovals.length}');
+      debugPrint(
+          '[PanicScan] ⚠️ Risky=${_riskyApprovals.length} / Total=${_allApprovals.length}');
 
       // Sort by risk score (descending) so critical items are handled first
       // Priority sorting: 1. Threat hits, 2. Score descending
@@ -145,7 +153,8 @@ class _PanicScanScreenState extends State<PanicScanScreen> {
         final evmRisky =
             _riskyApprovals.where((a) => a.chainType == 'evm').toList();
         if (evmRisky.isNotEmpty) {
-          debugPrint('[PanicScan] ⛽ Estimating gas for ${evmRisky.length} EVM revokes...');
+          debugPrint(
+              '[PanicScan] ⛽ Estimating gas for ${evmRisky.length} EVM revokes...');
           final queue = TransactionQueue();
           try {
             _gasEstimate = await queue.estimateTotalGas(evmRisky);

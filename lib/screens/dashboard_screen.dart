@@ -944,11 +944,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: wc.isConnected
-              ? () {
-                  wc.disconnect();
-                }
-              : null,
+          onTap: () {
+            if (wc.isConnected) wc.disconnect();
+            registry.clearSelectedAddress();
+          },
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -969,13 +968,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                       fontSize: 13,
                       fontFamily: 'monospace'),
                 ),
-                if (isSessionMatch)
-                  Text(
-                    loc.t('dashboardWalletTapDisconnectHint'),
-                    style: TextStyle(
-                        color: const Color(0xFF00FF9D).withOpacity(0.5),
-                        fontSize: 9),
-                  ),
+                Text(
+                  loc.t('dashboardWalletTapDisconnectHint'),
+                  style: TextStyle(
+                      color: const Color(0xFF00FF9D).withOpacity(0.5),
+                      fontSize: 9),
+                ),
               ],
             ),
           ),
@@ -995,21 +993,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                   color: Colors.orange,
                   fontSize: 8,
                   fontWeight: FontWeight.bold),
-            ),
-          )
-        else if (!wc.isConnected)
-          Container(
-            margin: const EdgeInsets.only(top: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.blue.withOpacity(0.3)),
-            ),
-            child: Text(
-              loc.t('dashboardStatusBrowser'),
-              style: const TextStyle(
-                  color: Colors.blue, fontSize: 8, fontWeight: FontWeight.bold),
             ),
           ),
       ],

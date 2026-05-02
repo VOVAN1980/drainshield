@@ -23,7 +23,10 @@ class WalletRegistryService extends ChangeNotifier {
   List<LinkedWallet> get wallets => List.unmodifiable(_wallets);
 
   String? _selectedAddress;
+  bool _explicitlyDisconnected = false;
+
   String get selectedAddress {
+    if (_explicitlyDisconnected) return '';
     if (_selectedAddress != null) return _selectedAddress!;
     final wcAddr = WcService().address;
     if (wcAddr.isNotEmpty) return wcAddr;
@@ -33,8 +36,15 @@ class WalletRegistryService extends ChangeNotifier {
   void setSelectedAddress(String addr) {
     if (_selectedAddress?.toLowerCase() != addr.toLowerCase()) {
       _selectedAddress = addr;
+      _explicitlyDisconnected = false;
       notifyListeners();
     }
+  }
+
+  void clearSelectedAddress() {
+    _selectedAddress = null;
+    _explicitlyDisconnected = true;
+    notifyListeners();
   }
 
   String _selectedChain = 'bsc';
@@ -83,6 +93,7 @@ class WalletRegistryService extends ChangeNotifier {
       if (_selectedAddress?.toLowerCase() != addr) {
         _selectedAddress = registeredWallet.address;
       }
+      _explicitlyDisconnected = false;
       _pendingAutoLinkAddress = null;
       notifyListeners();
       return;
@@ -259,12 +270,12 @@ class WalletRegistryService extends ChangeNotifier {
       return w;
     }).toList();
 
-    // If zero primaries found, we no longer automatically promote.
-    // The user must manually select a primary via the connection flow.
-    // if (!primaryFound && _wallets.isNotEmpty) {
-    //   _wallets[0] = _wallets[0].copyWith(isPrimary: true);
-    //   changed = true;
-    // }
+    // If zero primaries found, promote first wallet to maintain invariant.
+    // Without a primary, Free active-wallet logic and selectedAddress break.
+    if (!primaryFound && _wallets.isNotEmpty) {
+      _wallets[0] = _wallets[0].copyWith(isPrimary: true);
+      changed = true;
+    }
 
     return changed;
   }

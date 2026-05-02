@@ -66,7 +66,8 @@ class _ScanScreenState extends State<ScanScreen> {
     _isScanning = true;
     _progress = 0.0;
     final startTime = DateTime.now();
-    debugPrint('[ScanScreen] ▶ START scan | chain=${widget.chainType} | addr=${widget.address.substring(0, 8)}...');
+    debugPrint(
+        '[ScanScreen] ▶ START scan | chain=${widget.chainType} | addr=${widget.address.substring(0, 8)}...');
     // Fire visual animation in parallel – does not block the real fetch.
     _simulateProgress();
 
@@ -81,7 +82,8 @@ class _ScanScreenState extends State<ScanScreen> {
         chainType: widget.chainType,
       );
       final networkMs = DateTime.now().difference(startTime).inMilliseconds;
-      debugPrint('[ScanScreen] ✅ Network done in ${networkMs}ms | found=${list.length} approvals');
+      debugPrint(
+          '[ScanScreen] ✅ Network done in ${networkMs}ms | found=${list.length} approvals');
     } catch (e) {
       final networkMs = DateTime.now().difference(startTime).inMilliseconds;
       debugPrint('[ScanScreen] ❌ Scan FAILED in ${networkMs}ms | error=$e');

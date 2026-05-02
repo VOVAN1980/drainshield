@@ -24,7 +24,8 @@ class TronApprovalService {
     TronHttpRpcClient? rpcClient,
   }) async {
     final scanStart = DateTime.now();
-    debugPrint('[TronScan] ▶ START | addr=${walletAddress.substring(0, 8)}... | targets=${_scanTargetContracts.length}');
+    debugPrint(
+        '[TronScan] ▶ START | addr=${walletAddress.substring(0, 8)}... | targets=${_scanTargetContracts.length}');
     final client = rpcClient ?? TronHttpRpcClient.shared;
 
     final results = <ApprovalData>[];
@@ -45,12 +46,14 @@ class TronApprovalService {
         final ms = DateTime.now().difference(contractStart).inMilliseconds;
 
         if (!eventResult.isOk) {
-          debugPrint('[TronScan] ⚠️ $label events partial (${ms}ms): ${eventResult.errorMessage}');
+          debugPrint(
+              '[TronScan] ⚠️ $label events partial (${ms}ms): ${eventResult.errorMessage}');
           hadEventFailure = true;
           continue;
         }
 
-        debugPrint('[TronScan] ✅ $label events OK (${ms}ms) | events=${eventResult.events.length}');
+        debugPrint(
+            '[TronScan] ✅ $label events OK (${ms}ms) | events=${eventResult.events.length}');
 
         for (final event in eventResult.events) {
           final spender = event['spender']?.toString() ?? '';
@@ -76,7 +79,8 @@ class TronApprovalService {
       }
     }
 
-    debugPrint('[TronScan] 📋 Found ${spenderCandidates.length} spender candidates');
+    debugPrint(
+        '[TronScan] 📋 Found ${spenderCandidates.length} spender candidates');
 
     if (hadEventFailure) {
       debugPrint('[TronScan] ⚠️ Partial scan — some event queries failed');
@@ -95,7 +99,8 @@ class TronApprovalService {
         final ms = DateTime.now().difference(checkStart).inMilliseconds;
 
         if (allowance > BigInt.zero) {
-          debugPrint('[TronScan] 🚨 ACTIVE allowance #${i + 1} (${ms}ms): ${_shortAddress(candidate.spenderAddress)} → allowance=$allowance');
+          debugPrint(
+              '[TronScan] 🚨 ACTIVE allowance #${i + 1} (${ms}ms): ${_shortAddress(candidate.spenderAddress)} → allowance=$allowance');
           final tokenInfo =
               TronHttpRpcClient.knownTokens[candidate.tokenContract];
 
@@ -116,12 +121,14 @@ class TronApprovalService {
         }
       } catch (e) {
         final ms = DateTime.now().difference(checkStart).inMilliseconds;
-        debugPrint('[TronScan] ❌ Allowance check #${i + 1} FAILED (${ms}ms): $e');
+        debugPrint(
+            '[TronScan] ❌ Allowance check #${i + 1} FAILED (${ms}ms): $e');
       }
     }
 
     final totalMs = DateTime.now().difference(scanStart).inMilliseconds;
-    debugPrint('[TronScan] ⏹ DONE in ${totalMs}ms | active_approvals=${results.length}');
+    debugPrint(
+        '[TronScan] ⏹ DONE in ${totalMs}ms | active_approvals=${results.length}');
 
     if (hadEventFailure && results.isEmpty) {
       throw StateError(

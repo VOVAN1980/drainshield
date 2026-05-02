@@ -2,7 +2,7 @@ name: drainshield_app
 description: "DrainShield mobile security app"
 publish_to: 'none'
 
-version: 0.2.0+10
+version: 0.2.1+11
 
 environment:
   sdk: '>=3.3.4 <4.0.0'

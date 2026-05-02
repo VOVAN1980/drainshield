@@ -445,7 +445,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                           ),
                         ),
                         trailing: isSelected
-                            ? Icon(Icons.check_circle, color: _networkColor(network['id']!))
+                            ? Icon(Icons.check_circle,
+                                color: _networkColor(network['id']!))
                             : null,
                         onTap: () {
                           Navigator.pop(context);
