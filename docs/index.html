@@ -13,6 +13,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        .gplay-badge:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(255,255,255,0.25);
+        }
+        @media (max-width: 768px) {
+            .gplay-badge { width: auto !important; }
+            .hero-actions { align-items: center !important; }
+            .hero-actions .btn-social { width: 44px !important; }
+        }
+    </style>
 </head>
 
 <body>
@@ -68,7 +79,7 @@
                         <strong data-i18n="hero_disclaimer">No private key storage. Wallet-signed transactions only.
                             Non-custodial.</strong>
                     </p>
-                    <div class="actions-row hero-actions">
+                    <div class="actions-row hero-actions" style="flex-wrap:wrap;align-items:center;">
                         <a href="https://vovan1980.github.io/IBITILabs" class="btn btn-primary"
                             data-i18n="nav_labs">IBITI Labs</a>
                         <a href="https://play.google.com/store/apps/details?id=app.drainshield.guard" target="_blank" rel="noopener" class="gplay-badge" style="display:inline-flex;align-items:center;gap:10px;padding:10px 22px 10px 16px;background:#ffffff;border-radius:10px;text-decoration:none;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);box-shadow:0 4px 20px rgba(255,255,255,0.15);">
@@ -89,20 +100,20 @@
                                 <span style="font-size:18px;font-weight:700;color:#000;letter-spacing:-0.02em;" translate="no">Google Play</span>
                             </div>
                         </a>
-                    </div>
-                    <div class="actions-row social-hero">
-                        <a href="https://x.com/ibiticoin" target="_blank" class="btn-social x-social">
-                            <svg viewBox="0 0 24 24" class="social-icon">
-                                <path
-                                    d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                            </svg>
-                        </a>
-                        <a href="https://t.me/IBITIcoin_chat" target="_blank" class="btn-social telegram-social">
-                            <svg viewBox="0 0 24 24" class="social-icon">
-                                <path
-                                    d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.156-.28.28-.57.28l.202-3.08 5.56-5.028c.243-.217-.054-.336-.374-.12l-6.87 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.941z" />
-                            </svg>
-                        </a>
+                        <div style="display:flex;gap:12px;align-items:center;">
+                            <a href="https://x.com/ibiticoin" target="_blank" class="btn-social x-social">
+                                <svg viewBox="0 0 24 24" class="social-icon">
+                                    <path
+                                        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                </svg>
+                            </a>
+                            <a href="https://t.me/IBITIcoin_chat" target="_blank" class="btn-social telegram-social">
+                                <svg viewBox="0 0 24 24" class="social-icon">
+                                    <path
+                                        d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.156-.28.28-.57.28l.202-3.08 5.56-5.028c.243-.217-.054-.336-.374-.12l-6.87 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.941z" />
+                                </svg>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
