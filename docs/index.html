@@ -71,13 +71,22 @@
                     <div class="actions-row hero-actions">
                         <a href="https://vovan1980.github.io/IBITILabs" class="btn btn-primary"
                             data-i18n="nav_labs">IBITI Labs</a>
-                        <a href="https://play.google.com/store/apps/details?id=app.drainshield.guard" target="_blank" rel="noopener" class="btn btn-store">
-                            <img src="assets/images/google-play-icon.png" alt="Google Play"
-                                data-i18n-attr="alt:alt_google_play" class="btn-icon"
-                                onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg'">
-                            <div class="btn-text">
-                                <span class="btn-label">GET IT ON</span>
-                                <span class="btn-title" translate="no">Google Play</span>
+                        <a href="https://play.google.com/store/apps/details?id=app.drainshield.guard" target="_blank" rel="noopener" class="gplay-badge" style="display:inline-flex;align-items:center;gap:14px;padding:14px 28px 14px 20px;background:#ffffff;border-radius:12px;text-decoration:none;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);box-shadow:0 4px 20px rgba(255,255,255,0.15);">
+                            <svg viewBox="0 0 24 24" style="width:36px;height:36px;flex-shrink:0;">
+                                <defs>
+                                    <linearGradient id="gp1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00C3FF"/><stop offset="100%" stop-color="#1B6EF3"/></linearGradient>
+                                    <linearGradient id="gp2" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#00F076"/><stop offset="100%" stop-color="#00C3FF"/></linearGradient>
+                                    <linearGradient id="gp3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF3A44"/><stop offset="100%" stop-color="#FFD000"/></linearGradient>
+                                    <linearGradient id="gp4" x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFD000"/><stop offset="100%" stop-color="#FF3A44"/></linearGradient>
+                                </defs>
+                                <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92z" fill="url(#gp1)"/>
+                                <path d="M14.499 12.707l2.302 2.302-10.937 6.333 8.635-8.635z" fill="url(#gp2)"/>
+                                <path d="M17.698 9.508L20 11.81a1 1 0 0 1 0 1.38l-2.302 2.302L15.396 12l2.302-2.492z" fill="url(#gp3)"/>
+                                <path d="M5.864 1.458L16.8 7.791l-2.302 2.302-8.635-8.635z" fill="url(#gp4)"/>
+                            </svg>
+                            <div style="display:flex;flex-direction:column;line-height:1.15;">
+                                <span style="font-size:10px;font-weight:600;color:#000;letter-spacing:0.08em;text-transform:uppercase;">GET IT ON</span>
+                                <span style="font-size:22px;font-weight:700;color:#000;letter-spacing:-0.02em;" translate="no">Google Play</span>
                             </div>
                         </a>
                     </div>
