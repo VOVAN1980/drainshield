@@ -61,3 +61,18 @@ analysis*.txt
 analyze*.txt
 build_error.txt
 build_output.txt
+# Local Cloudflare / Wrangler
+.wrangler/
+.wrangler/**
+.dev.vars
+
+# Test payloads
+payload.json
+scan_*.json
+report.json
+label.json
+seed_trusted.sql
+
+# Build outputs
+android/build/
+build/

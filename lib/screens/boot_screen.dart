@@ -14,6 +14,7 @@ import "package:workmanager/workmanager.dart";
 import "../services/security/monitoring_worker.dart";
 import "../services/moralis/moralis_config_service.dart";
 import "../services/security/security_event_service.dart";
+import "../services/link_shield/share_intent_service.dart";
 import "package:flutter/foundation.dart";
 
 class BootScreen extends StatefulWidget {
@@ -69,6 +70,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
           "Security Logs", () => SecurityEventService.instance.init()),
       () =>
           _initStep("System Health", () => SystemHealthService.instance.init()),
+      () => _initStep("Link Shield", () => ShareIntentService.instance.init()),
       () => Future.delayed(const Duration(milliseconds: 500)),
     ];
 

@@ -1,8 +1,8 @@
-name: drainshield_app
+﻿name: drainshield_app
 description: "DrainShield mobile security app"
 publish_to: 'none'
 
-version: 0.2.1+11
+version: 0.3.0+12
 
 environment:
   sdk: '>=3.3.4 <4.0.0'
@@ -36,6 +36,7 @@ dependencies:
   sqflite: ^2.3.0
   app_settings: ^7.0.0
   crypto: ^3.0.3
+  share_plus: ^12.0.2
 
 dependency_overrides:
   sqflite: 2.3.3+1

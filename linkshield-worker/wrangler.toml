@@ -1,0 +1,12 @@
+name = "drainshield-linkshield-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-22"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "drainshield-linkshield-db"
+database_id = "af51ab08-5567-4024-96d6-52d86e5d582a"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "ce117f0494e24847ad7fdc074e1f0c76"

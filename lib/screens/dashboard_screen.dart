@@ -8,6 +8,8 @@ import "../widgets/design/ds_background.dart";
 import "../widgets/design/ds_slide_action.dart";
 import "pro_screen.dart";
 import "scan_screen.dart";
+import "link_scan_screen.dart";
+import "../widgets/link_shield_card.dart";
 import "panic_scan_screen.dart";
 import "portfolio_screen.dart";
 import "settings_screen.dart";
@@ -795,7 +797,27 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
+                  // ── LINK SHIELD — premium card ──
+                  DsFadeSlide(
+                    delay: const Duration(milliseconds: 75),
+                    child: Opacity(
+                      opacity: _isBooting ? 0.5 : 1.0,
+                      child: LinkShieldCard(
+                        onTap: _isBooting
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LinkScanScreen(),
+                                  ),
+                                );
+                              },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   // ── PANIC MODE — fade+slide entrance + press scale ──
                   DsFadeSlide(
                     delay: const Duration(milliseconds: 90),

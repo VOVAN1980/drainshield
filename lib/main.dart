@@ -7,6 +7,8 @@ import "package:reown_appkit/reown_appkit.dart";
 import "services/localization_service.dart";
 import "services/spender_intelligence_service.dart";
 import "services/update_service.dart";
+import "services/link_shield/share_intent_service.dart";
+import "screens/link_scan_screen.dart";
 import "screens/boot_screen.dart";
 import "screens/settings/update_screen.dart";
 import "package:workmanager/workmanager.dart";
@@ -89,6 +91,8 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
     super.initState();
     _fetchLocale();
     _checkForUpdates();
+    // Listen for share intents arriving while app is running
+    ShareIntentService.instance.addListener(_onShareIntent);
   }
 
   Future<void> _checkForUpdates() async {
@@ -220,6 +224,24 @@ class _DrainShieldAppState extends State<DrainShieldApp> {
 
   void updateLocale(Locale newLocale) {
     setState(() => _locale = newLocale);
+  }
+
+  void _onShareIntent() {
+    final url = ShareIntentService.instance.consumePendingUrl();
+    if (url != null && navigatorKey.currentContext != null) {
+      Navigator.push(
+        navigatorKey.currentContext!,
+        MaterialPageRoute(
+          builder: (_) => LinkScanScreen(sharedUrl: url),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    ShareIntentService.instance.removeListener(_onShareIntent);
+    super.dispose();
   }
 
   @override
