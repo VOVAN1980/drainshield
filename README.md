@@ -4,7 +4,7 @@
   <img src="assets/logo/lion_safe.png" alt="DrainShield Lion" width="220">
 </p>
 
-<p align="center"><b>Proactive Web3 Wallet Security — Multi-Chain Defense Platform</b></p>
+<p align="center"><b>Proactive Web3 Security — Wallet Defense + Link Threat Intelligence</b></p>
 
 <p align="center">
   <a href="https://play.google.com/store/apps/details?id=app.drainshield.guard">
@@ -19,18 +19,22 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.1-informational?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.3.0-informational?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/flutter-3.41.3-02569B?style=flat-square&logo=flutter" alt="Flutter">
+  <img src="https://img.shields.io/badge/backend-Cloudflare%20Workers-F38020?style=flat-square&logo=cloudflare" alt="Cloudflare">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84?style=flat-square&logo=android" alt="Android">
+  <img src="https://img.shields.io/badge/languages-17-blueviolet?style=flat-square" alt="Languages">
 </p>
 
 ---
 
-**DrainShield** is a powerful non-custodial security dashboard designed to protect Web3 users from malicious token approvals and permission abuse.  
-It provides a high-fidelity audit of wallet exposure, classifies risks using a multi-factor assessment engine, and enables instant, batch-revocation of dangerous permissions.
+**DrainShield** is a comprehensive Web3 security platform that protects users from two major attack vectors:
 
-DrainShield focuses on **proactive defense**—detecting and neutralizing threats before they can lead to asset loss.
+1. **🔐 Wallet Defense** — Audit and revoke malicious token approvals across 8 blockchain networks.
+2. **🔗 Link Shield** — Scan any URL for phishing, wallet drainers, and crypto scams using multi-source threat intelligence.
+
+DrainShield focuses on **proactive defense** — detecting and neutralizing threats before they can lead to asset loss.
 
 ---
 
@@ -47,6 +51,37 @@ DrainShield is available on **Google Play**:
 ---
 
 ## 🚀 Core Features
+
+### 🔗 Link Shield — URL Threat Intelligence *(NEW in v0.3.0)*
+
+Check any link before clicking. Paste a URL or share it from another app — get a clear safety verdict in seconds.
+
+**How it works:**
+```
+URL → Trusted List → Our DB (D1) → External Feeds → Web3 Pattern Engine → Verdict
+```
+
+| Layer | What it does |
+|-------|-------------|
+| **Trusted List** | Whitelist of known safe domains (binance.com, google.com...) |
+| **DrainShield DB** | Own threat database powered by Cloudflare D1 |
+| **External Feeds** | Google Safe Browsing + MetaMask PhishDetect |
+| **Web3 Pattern Engine** | 34 crypto brands × 30 scam keywords × 24 suspicious TLDs |
+| **Community Reports** | Truecaller-style reputation model — users report scams |
+
+**Verdicts:**
+- ✅ **Safe** — Trusted domain, no threats found
+- 🔵 **Low Data** — Unknown domain, be cautious
+- 🟡 **Suspicious** — Multiple risk signals detected
+- 🟠 **High Risk** — Likely wallet drainer
+- 🔴 **Confirmed Scam** — Known scam site
+
+**Key capabilities:**
+- Detects fake MetaMask, PancakeSwap, Uniswap, and 30+ brand impersonation sites — even when external databases miss them
+- Recognizes scam patterns: `claim-airdrop`, `free-mint`, `connect-wallet`, `approve-token`...
+- Catches typosquatting, homograph attacks, IP-based URLs, suspicious TLDs
+- Share scan results with friends to warn them
+- Report scam links to protect the community
 
 ### 🔐 Approval Auditing (Deep Scans)
 Goes beyond basic scanning to analyze the technical nature of spenders and contracts:
@@ -110,17 +145,28 @@ DrainShield provides real-time security auditing across multiple blockchain ecos
 
 Built on a modular service-oriented architecture for maximum reliability and decentralization.
 
-### Core Services
+### Frontend (Flutter)
 - **ApprovalScanService**: High-speed indexing of token allowances across all supported chains.
 - **RiskEngine**: The brain of the app, calculating 0-100 scores using multi-factor heuristics.
 - **ThreatIntelligenceService**: Integrates external security feeds to stay ahead of known exploits.
 - **BlockchainAnalysisService**: Deep-dives into contract verification and bytecode properties.
+- **LinkShieldApi**: Communicates with the backend for URL threat intelligence.
+- **LocalAnalyzer**: Client-side URL analysis engine (Web3 patterns, typosquatting, suspicious TLDs).
+- **ShareIntentService**: Receives shared URLs from Android Share Sheet.
 - **WalletRegistryService**: Multi-chain wallet lifecycle management with strict chain isolation.
 - **MonitoringService**: Background 24/7 wallet surveillance with push notification dispatch.
+
+### Backend (Cloudflare Workers)
+- **Link Shield API** — Serverless edge computing for URL scanning.
+- **D1 Database** — SQLite-based storage for domain reputation, scan history, and user reports.
+- **KV Cache** — Fast edge caching for scan results and external feed data.
+- **Web3 Pattern Engine** — Local brand impersonation and scam keyword detection.
+- **External Feeds** — Google Safe Browsing API + MetaMask eth-phishing-detect.
 
 ### Data Layer
 - **SQLite (sqflite)**: Persistent local storage for scan history, risk decisions, and postmortem analysis.
 - **SharedPreferences**: User settings, PRO status, and wallet configuration.
+- **Cloudflare D1**: Server-side domain reputation and community report storage.
 
 ---
 
@@ -129,13 +175,23 @@ Built on a modular service-oriented architecture for maximum reliability and dec
 | Component | Technology |
 |-----------|------------|
 | **Framework** | Flutter 3.41.3 / Dart |
+| **Backend** | Cloudflare Workers (TypeScript) |
+| **Database** | Cloudflare D1 (SQLite) + KV + local SQLite |
 | **Web3 Protocol** | Reown AppKit (WalletConnect v2) |
+| **Threat Intel** | Google Safe Browsing + MetaMask PhishDetect |
 | **Infrastructure** | Moralis Web3 APIs |
-| **Database** | SQLite (sqflite) |
 | **Background Tasks** | WorkManager |
 | **Notifications** | Flutter Local Notifications |
 | **Connectivity** | Connectivity Plus |
 | **Design System** | Premium "Lion" themed interface with reactive state management |
+
+---
+
+## 🌍 Supported Languages
+
+DrainShield is available in **17 languages**:
+
+🇬🇧 English · 🇷🇺 Русский · 🇸🇦 العربية · 🇩🇪 Deutsch · 🇪🇸 Español · 🇫🇷 Français · 🇮🇳 हिन्दी · 🇮🇩 Bahasa Indonesia · 🇮🇹 Italiano · 🇯🇵 日本語 · 🇰🇷 한국어 · 🇵🇱 Polski · 🇧🇷 Português · 🇹🇷 Türkçe · 🇺🇦 Українська · 🇻🇳 Tiếng Việt · 🇨🇳 中文
 
 ---
 
@@ -144,7 +200,8 @@ Built on a modular service-oriented architecture for maximum reliability and dec
 ### Requirements
 - Flutter SDK (3.41.3 or newer)
 - Java 21 (for Android builds)
-- Moralis API Key (Required for scanning)
+- Moralis API Key (Required for wallet scanning)
+- Cloudflare account (Required for Link Shield backend)
 
 ### Installation
 1.  **Clone & Install**:
@@ -160,7 +217,15 @@ Built on a modular service-oriented architecture for maximum reliability and dec
       "MORALIS_API_KEY": "YOUR_API_KEY"
     }
     ```
-3.  **Run**:
+3.  **Link Shield Backend** (optional):
+    ```bash
+    cd linkshield-worker
+    npx wrangler d1 create linkshield-db
+    npx wrangler d1 execute linkshield-db --file=schema.sql
+    npx wrangler secret put GOOGLE_SAFE_BROWSING_KEY
+    npx wrangler deploy
+    ```
+4.  **Run**:
     ```bash
     flutter run
     ```
