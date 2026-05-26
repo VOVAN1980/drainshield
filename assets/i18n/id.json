@@ -1,4 +1,4 @@
-{
+﻿{
   "dashboardTitle": "DrainShield",
   "dashboardPro": "PRO",
   "dashboardSystemStandby": "SISTEM SIAGA",
@@ -343,7 +343,7 @@
   "linkedWalletsMismatchMessage": "Alamat diharapkan {target} tetapi Anda terhubung ke {selected} via {guest}. Harap gunakan aplikasi dompet yang benar.",
   "linkedWalletsTryAgain": "Coba Lagi",
   "linkedWalletsSetNewPrimaryTitle": "Pilih Dompet Utama Baru",
-  "linkedWalletsSetNewPrimaryMessage": "Anda telah menghapus dompet utama Anda. Silakan pilih salah satu dompet yang tersisa dan ketuk «Atur sebagai Utama» untuk memulihkan perlindungan penuh.",
+  "linkedWalletsSetNewPrimaryMessage": "Anda telah menghapus dompet utama Anda. Silakan pilih salah satu dompet yang tersisa dan ketuk В«Atur sebagai UtamaВ» untuk memulihkan perlindungan penuh.",
   "panicEmergencyScan": "PEMINDAIAN DARURAT",
   "basicScanStep1": "Protokol Pemindaian",
   "basicScanStep2": "Menganalisis Izin",
@@ -383,9 +383,9 @@
   "unknownError": "Kesalahan tidak dikenal",
   "settingsSupportEmailValue": "info@ibiticoin.com",
   "settingsAboutContent": "DrainShield adalah rangkaian keamanan blockchain premium yang didedikasikan untuk melindungi aset digital dalam lanskap Web3 yang terus berkembang. Aplikasi kami menyediakan pemantauan real-time, intelijen ancaman tingkat lanjut, dan penilaian kerentanan yang lancar langsung di perangkat Anda.\n\nMisi Kami:\nMemberdayakan pengguna blockchain dengan alat keamanan tingkat institusi, memastikan setiap transaksi aman dan setiap persetujuan transparan.\n\nDrainShield dikembangkan dengan pendekatan privasi diutamakan, memastikan kunci Anda tidak pernah meninggalkan perangkat Anda.\n\nSitus web: https://vovan1980.github.io/drainshield\nEmail: info@ibiticoin.com",
-  "settingsPrivacyPolicyContent": "Kebijakan Privasi – DrainShield\n\nTerakhir diperbarui: 2026\n\nDrainShield adalah alat keamanan yang dirancang untuk membantu pengguna menganalisis persetujuan token dan mengidentifikasi risiko.\n\n1. Informasi yang Tidak Kami Kumpulkan\n\nDrainShield tidak mengumpulkan kunci pribadi, frasa pemulihan, atau kata sandi.\n\n2. Penggunaan Alamat Dompet\n\nAlamat diproses secara lokal untuk memindai risiko dan tidak disimpan di server kami.\n\n3. Data Blockchain\n\nKami membaca data publik dari node RPC. Semua data sudah bersifat publik.\n\n4. Keamanan\n\nDrainShield bekerja tanpa membutuhkan akses penuh ke dana Anda. Analisis menggunakan data publik.\n\n5. Kontak: info@ibiticoin.com",
-  "settingsTermsOfServiceContent": "Ketentuan Layanan – DrainShield\n\nTerakhir diperbarui: 2026\n\nDengan menggunakan DrainShield, Anda menyetujui ketentuan berikut.\n\n1. Layanan\nDrainShield membantu memindai dan mencabut izin berisiko tinggi.\n\n2. Tanggung Jawab\nPengguna bertanggung jawab penuh atas keamanan kunci mereka sendiri.\n\n3. Bukan Saran Keuangan\nInformasi ini hanya untuk analisis keamanan, bukan saran investasi.\n\n4. Batasan Tanggung Jawab\nKami tidak bertanggung jawab atas kerugian finansial atau pencurian aset.\n\n5. Kontak: info@ibiticoin.com",
-  "settingsDisclaimerContent": "Penafian – DrainShield\n\nTerakhir diperbarui: 2026\n\nDrainShield adalah alat analisis keamanan blockchain.\n\n1. Kustodi\nKami tidak memegang dana Anda. Semua kontrol ada di dompet Anda.\n\n2. Kunci\nKami tidak pernah meminta kunci pribadi atau seed phrase.\n\n3. Risiko\nInteraksi blockchain selalu berisiko. Gunakan dengan bijak.\n\n4. Kontak: info@ibiticoin.com",
+  "settingsPrivacyPolicyContent": "Kebijakan Privasi вЂ“ DrainShield\n\nTerakhir diperbarui: 2026\n\nDrainShield adalah alat keamanan yang dirancang untuk membantu pengguna menganalisis persetujuan token dan mengidentifikasi risiko.\n\n1. Informasi yang Tidak Kami Kumpulkan\n\nDrainShield tidak mengumpulkan kunci pribadi, frasa pemulihan, atau kata sandi.\n\n2. Penggunaan Alamat Dompet\n\nAlamat diproses secara lokal untuk memindai risiko dan tidak disimpan di server kami.\n\n3. Data Blockchain\n\nKami membaca data publik dari node RPC. Semua data sudah bersifat publik.\n\n4. Keamanan\n\nDrainShield bekerja tanpa membutuhkan akses penuh ke dana Anda. Analisis menggunakan data publik.\n\n5. Kontak: info@ibiticoin.com",
+  "settingsTermsOfServiceContent": "Ketentuan Layanan вЂ“ DrainShield\n\nTerakhir diperbarui: 2026\n\nDengan menggunakan DrainShield, Anda menyetujui ketentuan berikut.\n\n1. Layanan\nDrainShield membantu memindai dan mencabut izin berisiko tinggi.\n\n2. Tanggung Jawab\nPengguna bertanggung jawab penuh atas keamanan kunci mereka sendiri.\n\n3. Bukan Saran Keuangan\nInformasi ini hanya untuk analisis keamanan, bukan saran investasi.\n\n4. Batasan Tanggung Jawab\nKami tidak bertanggung jawab atas kerugian finansial atau pencurian aset.\n\n5. Kontak: info@ibiticoin.com",
+  "settingsDisclaimerContent": "Penafian вЂ“ DrainShield\n\nTerakhir diperbarui: 2026\n\nDrainShield adalah alat analisis keamanan blockchain.\n\n1. Kustodi\nKami tidak memegang dana Anda. Semua kontrol ada di dompet Anda.\n\n2. Kunci\nKami tidak pernah meminta kunci pribadi atau seed phrase.\n\n3. Risiko\nInteraksi blockchain selalu berisiko. Gunakan dengan bijak.\n\n4. Kontak: info@ibiticoin.com",
   "settingsAboutDisclaimer": "Penafian",
   "proFirewallTitle": "Firewall AI",
   "proFirewallSub": "Pemblokiran transaksi mencurigakan",
@@ -510,7 +510,7 @@
   "linkRiskSuspiciousParams": "Parameter mencurigakan di URL (approve, private key)",
   "linkRiskLongUrl": "URL sangat panjang (mungkin menyembunyikan tujuan asli)",
   "linkRiskScamDomainWord": "Kata scam ditemukan di nama domain",
-  "linkRiskBrandPlusScam": "Nama merek + kata scam — kemungkinan palsu",
+  "linkRiskBrandPlusScam": "Nama merek + kata scam вЂ” kemungkinan palsu",
   "linkShareTitle": "Pemeriksaan Tautan DrainShield",
   "linkShareChecked": "Diverifikasi",
   "linkShareLink": "Tautan",
@@ -548,5 +548,7 @@
   "linkRiskKnownThreat": "Ancaman diketahui di basis data DrainShield",
   "linkRiskCommunityReports": "Dilaporkan oleh anggota komunitas",
   "linkRiskExternalDbMatch": "Ditemukan di basis data ancaman eksternal",
-  "linkRiskNotVerified": "Reputasi domain belum diverifikasi"
+  "linkRiskNotVerified": "Reputasi domain belum diverifikasi",
+  "linkRiskBrandImpersonation": "Peniruan merek: menggunakan nama merek terkenal di domain palsu",
+  "linkRiskPaymentPhishing": "Phishing pembayaran: halaman pembayaran palsu yang meniru layanan terpercaya"
 }

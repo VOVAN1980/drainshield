@@ -553,5 +553,7 @@
   "linkRiskKnownThreat": "Known threat in DrainShield database",
   "linkRiskCommunityReports": "Reported by community members",
   "linkRiskExternalDbMatch": "Found in external threat database",
-  "linkRiskNotVerified": "Domain reputation not yet verified"
+  "linkRiskNotVerified": "Domain reputation not yet verified",
+  "linkRiskBrandImpersonation": "Brand impersonation: uses known brand name on a fake domain",
+  "linkRiskPaymentPhishing": "Payment phishing: fake payment/billing page imitating a trusted service"
 }

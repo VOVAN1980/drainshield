@@ -246,6 +246,51 @@ class LocalLinkAnalyzer {
     'trezor': 'trezor.io',
   };
 
+  // ── Service/platform brands (non-crypto) for payment phishing detection ────
+  static const _serviceBrands = <String, List<String>>{
+    'namecheap': ['namecheap.com'],
+    'privateemail': ['privateemail.com'],
+    'godaddy': ['godaddy.com'],
+    'paypal': ['paypal.com'],
+    'stripe': ['stripe.com'],
+    'apple': ['apple.com', 'icloud.com'],
+    'microsoft': ['microsoft.com', 'outlook.com', 'live.com'],
+    'amazon': ['amazon.com'],
+    'netflix': ['netflix.com'],
+    'dropbox': ['dropbox.com'],
+    'cloudflare': ['cloudflare.com'],
+    'zoom': ['zoom.us'],
+    'spotify': ['spotify.com'],
+    'steam': ['steampowered.com', 'steamcommunity.com'],
+  };
+
+  // ── Payment/billing phishing keywords ──────────────────────────────────────
+  static const _paymentKeywords = <String>[
+    'payment',
+    'billing',
+    'invoice',
+    'update-payment',
+    'card',
+    'renew',
+    'renewal',
+    'subscription',
+    'checkout',
+    'order',
+    'secure-payment',
+    'confirm-payment',
+    'verify-payment',
+    'account-suspended',
+    'account-locked',
+    'verify-account',
+    'update-billing',
+    'payment-method',
+    'add-card',
+    'reactivate',
+    'overdue',
+    'past-due',
+    'expir',
+  ];
+
   // ── Homograph / Punycode confusion characters ─────────────────────────────
   static const _homoglyphs = <String, String>{
     'а': 'a', // Cyrillic а → Latin a
@@ -452,6 +497,48 @@ class LocalLinkAnalyzer {
     if (rawUrl.length > 500) {
       riskScore += 10;
       riskFactors.add('linkRiskLongUrl');
+    }
+
+    // 16. SERVICE BRAND IMPERSONATION — brand in subdomain/path but wrong root
+    //     e.g. privateemail.abiluxitalia.com/namecheap/index.html
+    String? serviceBrandMatch;
+    for (final entry in _serviceBrands.entries) {
+      final brand = entry.key;
+      final officialDomains = entry.value;
+      final inDomain = domain.contains(brand);
+      final inPath = fullPath.contains('/$brand');
+      if (inDomain || inPath) {
+        final isOfficial =
+            officialDomains.any((d) => rootDomain == d || domain == d);
+        if (!isOfficial) {
+          serviceBrandMatch = brand;
+          riskScore += 35;
+          riskFactors.add('linkRiskBrandImpersonation');
+          debugPrint(
+              '[LocalAnalyzer] ⚠ Service brand impersonation: $brand on $domain');
+          break;
+        }
+      }
+    }
+
+    // 17. PAYMENT PHISHING — payment/billing keywords in URL
+    bool hasPaymentKeyword = false;
+    for (final kw in _paymentKeywords) {
+      if (fullPath.contains(kw)) {
+        hasPaymentKeyword = true;
+        break;
+      }
+    }
+    if (hasPaymentKeyword && serviceBrandMatch != null) {
+      // Brand impersonation + payment page = almost certainly phishing
+      riskScore += 40;
+      riskFactors.add('linkRiskPaymentPhishing');
+      debugPrint(
+          '[LocalAnalyzer] 🔴 Payment phishing: $serviceBrandMatch brand + payment keywords');
+    } else if (hasPaymentKeyword && typosquatBrand != null) {
+      // Crypto brand typosquat + payment keywords
+      riskScore += 25;
+      riskFactors.add('linkRiskPaymentPhishing');
     }
 
     // Clamp score, enforce minimum 25 for unknown (non-allowlisted) domains

@@ -1,4 +1,4 @@
-// DrainShield Link Shield API — Cloudflare Worker v2.1
+// DrainShield Link Shield API — Cloudflare Worker v2.2
 // Truecaller-style reputation system for URLs/domains
 // M3: Own DB (D1 + KV)
 // M4: External feeds — cache-first, query once, remember forever
@@ -569,6 +569,43 @@ const BRAND_DOMAINS: Record<string, string> = {
   stargate: "stargate.finance",
 };
 
+// Service/platform brands (non-crypto) — for payment phishing detection
+const SERVICE_BRANDS: Record<string, string[]> = {
+  namecheap: ["namecheap.com"],
+  privateemail: ["privateemail.com"],
+  godaddy: ["godaddy.com"],
+  paypal: ["paypal.com"],
+  stripe: ["stripe.com"],
+  apple: ["apple.com", "icloud.com"],
+  microsoft: ["microsoft.com", "outlook.com", "live.com"],
+  google: ["google.com", "gmail.com"],
+  amazon: ["amazon.com", "aws.amazon.com"],
+  netflix: ["netflix.com"],
+  dropbox: ["dropbox.com"],
+  cloudflare: ["cloudflare.com"],
+  github: ["github.com"],
+  discord: ["discord.com", "discord.gg"],
+  telegram: ["telegram.org", "t.me"],
+  whatsapp: ["whatsapp.com"],
+  instagram: ["instagram.com"],
+  facebook: ["facebook.com"],
+  twitter: ["twitter.com", "x.com"],
+  linkedin: ["linkedin.com"],
+  zoom: ["zoom.us"],
+  spotify: ["spotify.com"],
+  steam: ["steampowered.com", "steamcommunity.com"],
+};
+
+// Payment/billing phishing keywords in URL path
+const PAYMENT_KEYWORDS = [
+  "payment", "billing", "invoice", "update-payment", "card",
+  "renew", "renewal", "subscription", "checkout", "order",
+  "secure-payment", "confirm-payment", "verify-payment",
+  "account-suspended", "account-locked", "verify-account",
+  "update-billing", "payment-method", "add-card",
+  "reactivate", "overdue", "past-due", "expir",
+];
+
 // Suspicious TLDs frequently used in phishing
 const SUSPICIOUS_TLDS = new Set([
   ".xyz", ".top", ".click", ".buzz", ".info", ".win", ".loan",
@@ -703,6 +740,59 @@ function analyzeWeb3Patterns(domain: string, root: string, url: string): Pattern
     score += 40;
     confidenceDelta += 2;
     reasons.push("linkRiskIpAddress");
+  }
+
+  // 9. SERVICE BRAND IMPERSONATION — brand in subdomain/path but wrong root domain
+  //    e.g. privateemail.abiluxitalia.com/namecheap/index.html
+  let serviceBrandMatch: string | null = null;
+  for (const [brand, officialDomains] of Object.entries(SERVICE_BRANDS)) {
+    const inDomain = domainLower.includes(brand);
+    const inPath = fullUrl.includes("/" + brand);
+    if (inDomain || inPath) {
+      const isOfficial = officialDomains.some(d => root === d || domainLower === d);
+      if (!isOfficial) {
+        serviceBrandMatch = brand;
+        score += 35;
+        confidenceDelta += 2;
+        if (!reasons.includes("linkRiskBrandImpersonation")) {
+          reasons.push("linkRiskBrandImpersonation");
+        }
+        break;
+      }
+    }
+  }
+
+  // 10. PAYMENT PHISHING — payment/billing keywords in URL
+  let hasPaymentKeyword = false;
+  for (const kw of PAYMENT_KEYWORDS) {
+    if (fullUrl.includes(kw)) {
+      hasPaymentKeyword = true;
+      break;
+    }
+  }
+  if (hasPaymentKeyword && serviceBrandMatch) {
+    // Brand impersonation + payment page = almost certainly phishing
+    score += 40;
+    confidenceDelta += 3;
+    if (!reasons.includes("linkRiskPaymentPhishing")) {
+      reasons.push("linkRiskPaymentPhishing");
+    }
+  } else if (hasPaymentKeyword && hasBrand) {
+    // Crypto brand + payment keywords = suspicious
+    score += 25;
+    confidenceDelta += 2;
+    if (!reasons.includes("linkRiskPaymentPhishing")) {
+      reasons.push("linkRiskPaymentPhishing");
+    }
+  }
+
+  // 11. SERVICE BRAND + SCAM/PAYMENT COMBO — deadly combination
+  if (serviceBrandMatch && (hasScamWord || hasPaymentKeyword)) {
+    score += 20;
+    confidenceDelta += 2;
+    if (!reasons.includes("linkRiskBrandPlusScam")) {
+      reasons.push("linkRiskBrandPlusScam");
+    }
   }
 
   return { score, confidenceDelta, reasons };
