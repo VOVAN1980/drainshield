@@ -210,7 +210,7 @@ class TronHttpRpcClient {
 
     if (res.statusCode == 429) {
       if (attempt >= _maxRetries) {
-        throw TronRpcException(
+        throw const TronRpcException(
             'HTTP 429: rate limit after $_maxRetries retries');
       }
       final wait = _parse429Wait(res.body);
@@ -245,7 +245,7 @@ class TronHttpRpcClient {
 
     if (res.statusCode == 429) {
       if (attempt >= _maxRetries) {
-        throw TronRpcException(
+        throw const TronRpcException(
             'HTTP 429: rate limit after $_maxRetries retries');
       }
       final wait = _parse429Wait(res.body);
@@ -503,7 +503,7 @@ class TronHttpRpcClient {
 
     if (res.statusCode == 429) {
       if (attempt >= _maxRetries) {
-        throw TronRpcException(
+        throw const TronRpcException(
             'TronGrid event 429: rate limit after $_maxRetries retries');
       }
       final wait = _parse429Wait(res.body);
