@@ -37,6 +37,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         val url = extractUrl(intent) ?: return
         // Send to Flutter via MethodChannel (warm start)
         flutterEngine?.dartExecutor?.let {

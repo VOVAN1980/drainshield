@@ -864,10 +864,9 @@ packages:
   reown_appkit:
     dependency: "direct main"
     description:
-      name: reown_appkit
-      sha256: "4bffd64bfc6610ee2bc7f26dac8d59464824a8fcea99c9a263dc4a94bab633bb"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/reown_appkit"
+      relative: true
+    source: path
     version: "1.8.3"
   reown_core:
     dependency: "direct main"

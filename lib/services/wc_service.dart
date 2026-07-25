@@ -1,3 +1,4 @@
+import "dart:async";
 import "package:flutter/material.dart";
 import "package:reown_appkit/reown_appkit.dart";
 
@@ -7,6 +8,7 @@ class WcService extends ChangeNotifier {
   WcService._internal();
   ReownAppKitModal? _modal;
   bool _initing = false;
+
   ReownAppKitModal? get modal => _modal;
   bool get isReady => _modal != null;
   bool get isConnected => _modal?.isConnected ?? false;
@@ -65,23 +67,37 @@ class WcService extends ChangeNotifier {
   }
 
   int get currentChainId {
+    // No connected EVM address -> no active EVM Chain ID
+    if (address.isEmpty) return 0;
+
     final chainIdStr = _modal?.selectedChain?.chainId;
     if (chainIdStr != null) {
-      // It might be "56" or "eip155:56"
       final parts = chainIdStr.split(':');
-      final rawNum = parts.isNotEmpty ? parts.last : chainIdStr;
-      final parsed = int.tryParse(rawNum);
-      if (parsed != null) return parsed;
+      if (parts.length > 1) {
+        // e.g. "eip155:56" vs "tron:0x2b6653dc"
+        final prefix = parts.first.toLowerCase();
+        if (prefix == 'eip155') {
+          final parsed = int.tryParse(parts[1]);
+          if (parsed != null) return parsed;
+        }
+        // If prefix is 'tron' or 'solana', ignore and fall through
+      } else {
+        // e.g. "56"
+        final parsed = int.tryParse(chainIdStr);
+        if (parsed != null) return parsed;
+      }
     }
 
     final s = _modal?.session;
     final ns = s?.namespaces;
     if (ns == null || ns.isEmpty) return 0;
     final accounts = ns["eip155"]?.accounts ?? const <String>[];
-    if (accounts.isEmpty) return 0;
-    final parts = accounts.first.split(":"); // eip155:56:0x...
-    if (parts.length >= 2) {
-      return int.tryParse(parts[1]) ?? 0;
+    for (final account in accounts) {
+      final parts = account.split(":"); // eip155:56:0x...
+      if (parts.length >= 3 && parts[0].toLowerCase() == 'eip155') {
+        final chainId = int.tryParse(parts[1]);
+        if (chainId != null) return chainId;
+      }
     }
     return 0;
   }
@@ -149,40 +165,26 @@ class WcService extends ChangeNotifier {
     // Refresh UI on modal updates
     _modal!.addListener(_onModalUpdate);
     await _modal!.init();
-    debugPrint("[WcService] Modal initialized");
     _initing = false;
     notifyListeners();
   }
 
   void _onModalUpdate() {
-    debugPrint("[WcService] _onModalUpdate: "
-        "isConnected=$isConnected, "
-        "address=$address, "
-        "currentChainId=$currentChainId, "
-        "hasSession=${_modal?.session != null}, "
-        "selectedChainId=${_modal?.selectedChain?.chainId}");
     notifyListeners();
   }
 
   void connect(BuildContext context) {
-    debugPrint("[WcService] connect started");
     final m = _modal;
     if (m == null) throw StateError("WcService not initialized");
-    // Open the WalletConnect modal
-    // Revert to AllWalletsPage as SelectWalletPage was not found
     m.openModalView(const ReownAppKitModalAllWalletsPage());
   }
 
   Future<void> disconnect() async {
-    debugPrint("[WcService] disconnect called");
     final m = _modal;
     if (m == null) return;
     try {
       await m.disconnect();
-    } catch (e) {
-      debugPrint("[WcService] disconnect error: $e");
-    }
-    debugPrint("[WcService] after disconnect: isConnected=$isConnected");
+    } catch (_) {}
     notifyListeners();
   }
 

@@ -1,0 +1,23 @@
+﻿=== GRID LIVE-SHADOW SLICE 20260608_194505 ===
+--- DB ---
+utc_now            
+-------------------
+2026-06-08 17:45:05
+
+--- maker_shadow_orders by status ---
+
+--- maker_paper_trades by status ---
+
+--- shadow fills ---
+
+--- events count ---
+
+--- NEEDS_SELL_REPOST ---
+
+--- last 30 shadow orders ---
+
+--- last 30 events ---
+
+--- last 30 fills ---
+
+--- open/repost paper trades ---

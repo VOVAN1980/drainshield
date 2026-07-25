@@ -439,9 +439,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         : (wc.isConnected ? wc.address : '');
 
     final bool isSessionMatch = wc.isConnected &&
+        wc.address.isNotEmpty &&
+        displayAddress.isNotEmpty &&
         wc.address.toLowerCase().trim() == displayAddress.toLowerCase().trim();
 
-    final int effectiveChainId = (wc.isConnected && wc.currentChainId != 0)
+    final int effectiveChainId = (isSessionMatch && wc.currentChainId != 0)
         ? wc.currentChainId
         : (registry.selectedChainId != 0 ? registry.selectedChainId : 56);
 
@@ -626,8 +628,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    _buildChainBadge(loc, effectiveChainId,
-                                        selectedChainType, accentColor),
+                                    if (displayAddress.isNotEmpty)
+                                      _buildChainBadge(loc, effectiveChainId,
+                                          selectedChainType, accentColor),
                                     const SizedBox(height: 12),
                                     Text(
                                       loc.t('dashboardNoRiskScore'),
@@ -652,8 +655,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    _buildChainBadge(loc, effectiveChainId,
-                                        selectedChainType, accentColor),
+                                    if (displayAddress.isNotEmpty)
+                                      _buildChainBadge(loc, effectiveChainId,
+                                          selectedChainType, accentColor),
                                     const SizedBox(height: 12),
                                     _buildAddressInfo(loc, displayAddress, wc,
                                         isSessionMatch),
@@ -966,8 +970,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {
-            if (wc.isConnected) wc.disconnect();
+          onTap: () async {
+            if (wc.isConnected) await wc.disconnect();
             registry.clearSelectedAddress();
           },
           child: Container(
@@ -993,8 +997,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Text(
                   loc.t('dashboardWalletTapDisconnectHint'),
                   style: TextStyle(
-                      color: const Color(0xFF00FF9D).withOpacity(0.5),
-                      fontSize: 9),
+                      color: const Color(0xFF00FF9D).withOpacity(0.85),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600),
                 ),
               ],
             ),
