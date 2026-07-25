@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.0-informational?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.3.1-informational?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/flutter-3.41.3-02569B?style=flat-square&logo=flutter" alt="Flutter">
   <img src="https://img.shields.io/badge/backend-Cloudflare%20Workers-F38020?style=flat-square&logo=cloudflare" alt="Cloudflare">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
