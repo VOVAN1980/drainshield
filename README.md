@@ -67,7 +67,7 @@ URL → Trusted List → Our DB (D1) → External Feeds → Web3 Pattern Engine 
 | **DrainShield DB** | Own threat database powered by Cloudflare D1 |
 | **External Feeds** | Google Safe Browsing + MetaMask PhishDetect |
 | **Web3 Pattern Engine** | 34 crypto brands × 30 scam keywords × 24 suspicious TLDs |
-| **Community Reports** | Truecaller-style reputation model — users report scams |
+| **Community Reports** | Community reputation model — users report scams |
 
 **Verdicts:**
 - ✅ **Safe** — Trusted domain, no threats found
@@ -103,7 +103,7 @@ A dedicated, high-priority interface for rapid asset isolation.
 
 ### 💎 PRO Protection
 Advanced security tier for intensive wallet management:
-- **24/7 Auto-Monitoring** — Continuous background scanning with real-time alerts.
+- **Auto-Monitoring (PRO)** — Scheduled background scans of linked wallets (every 15 min to 4 h) with alerts on new risky approvals.
 - **Batch Risk Revoke** — One-tap remediation of multiple threats.
 - **5+ Wallet Slots** — Manage and monitor multiple wallets simultaneously.
 - **Priority Threat Alerts** — Push notifications with sound & vibration for critical events.
@@ -154,7 +154,7 @@ Built on a modular service-oriented architecture for maximum reliability and dec
 - **LocalAnalyzer**: Client-side URL analysis engine (Web3 patterns, typosquatting, suspicious TLDs).
 - **ShareIntentService**: Receives shared URLs from Android Share Sheet.
 - **WalletRegistryService**: Multi-chain wallet lifecycle management with strict chain isolation.
-- **MonitoringService**: Background 24/7 wallet surveillance with push notification dispatch.
+- **MonitoringService**: Scheduled background wallet scans with local notifications.
 
 ### Backend (Cloudflare Workers)
 - **Link Shield API** — Serverless edge computing for URL scanning.
@@ -239,7 +239,7 @@ DrainShield is available in **17 languages**:
 | 🌍 **Website** | [vovan1980.github.io/drainshield](https://vovan1980.github.io/drainshield/) |
 | 📲 **Google Play** | [DrainShield on Play Store](https://play.google.com/store/apps/details?id=app.drainshield.guard) |
 | 🧪 **IBITI Labs** | [vovan1980.github.io/IBITILabs](https://vovan1980.github.io/IBITILabs) |
-| 🐦 **X (Twitter)** | [@ibiticoin](https://x.com/ibiticoin) |
+| 🐦 **X (Twitter)** | [@IBITILabs](https://x.com/IBITILabs) |
 | 💬 **Telegram** | [IBITIcoin_chat](https://t.me/IBITIcoin_chat) |
 | 📧 **Contact** | info@ibiticoin.com |
 

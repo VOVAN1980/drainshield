@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.1-informational?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.3.1-informational?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84?style=flat-square&logo=android" alt="Android">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
 </p>
@@ -51,7 +51,7 @@ A dedicated, high-priority interface for rapid asset isolation.
 
 ### 💎 PRO Protection
 Advanced security tier for intensive wallet management:
-- **24/7 Auto-Monitoring** — Continuous background scanning with real-time alerts.
+- **Auto-Monitoring (PRO)** — Scheduled background scans of linked wallets (every 15 min to 4 h) with alerts on new risky approvals.
 - **Batch Risk Revoke** — One-tap remediation of multiple threats.
 - **5+ Wallet Slots** — Manage and monitor multiple wallets simultaneously.
 - **Priority Threat Alerts** — Push notifications for critical security events.
@@ -94,7 +94,7 @@ Advanced security tier for intensive wallet management:
 | 📲 **Google Play** | [Download DrainShield](https://play.google.com/store/apps/details?id=app.drainshield.guard) |
 | 🧪 **IBITI Labs** | [vovan1980.github.io/IBITILabs](https://vovan1980.github.io/IBITILabs) |
 | 💻 **Source Code** | [github.com/VOVAN1980/drainshield](https://github.com/VOVAN1980/drainshield) |
-| 🐦 **X (Twitter)** | [@ibiticoin](https://x.com/ibiticoin) |
+| 🐦 **X (Twitter)** | [@IBITILabs](https://x.com/IBITILabs) |
 | 💬 **Telegram** | [IBITIcoin_chat](https://t.me/IBITIcoin_chat) |
 | 📧 **Contact** | info@ibiticoin.com |
 
